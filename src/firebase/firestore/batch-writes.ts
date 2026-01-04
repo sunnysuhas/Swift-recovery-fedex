@@ -6,17 +6,14 @@ import { Case, DCA, AuditLog } from '@/lib/types';
 import { User } from 'firebase/auth';
 
 function findValue(data: any, keys: string[]): any {
-    const dataKeys = Object.keys(data).reduce((acc, key) => {
-        // Normalize key by converting to lower case and removing quotes
-        acc[key.toLowerCase().replace(/"/g, '')] = key;
-        return acc;
-    }, {} as Record<string, string>);
-
-    for (const key of keys) {
-        // Normalize search key
-        const foundKey = dataKeys[key.toLowerCase()];
-        if (foundKey && data[foundKey] !== undefined) {
-            return data[foundKey];
+    const dataKeys = Object.keys(data);
+    for (const searchKey of keys) {
+        const lowerSearchKey = searchKey.toLowerCase().trim();
+        for (const dataKey of dataKeys) {
+            const lowerDataKey = dataKey.toLowerCase().trim().replace(/"/g, '');
+            if (lowerDataKey === lowerSearchKey) {
+                return data[dataKey];
+            }
         }
     }
     return undefined;
@@ -62,6 +59,11 @@ export function batchWriteCases(db: Firestore, data: any[]) {
     const caseId = findValue(item, ['id', 'caseId']) || `case-${Math.random().toString(36).substring(2, 9)}`;
     const docRef = doc(db, 'cases', caseId);
     const parsedData = parseCase(item);
+    
+    if (parsedData.debtor.name === undefined || parsedData.debtor.accountId === undefined) {
+        throw new Error(`Could not parse debtor information for an item. Ensure your CSV has headers like 'debtorName' and 'debtorAccountId'. Item data: ${JSON.stringify(item)}`);
+    }
+
     batch.set(docRef, { ...parsedData, id: caseId });
   });
   return batch.commit().catch((error) => {
