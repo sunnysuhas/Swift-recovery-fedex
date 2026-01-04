@@ -55,10 +55,11 @@ service cloud.firestore {
     }
     
     /**
-     * Checks if the email used for signup is one of the designated admin emails.
-     * This is used to bootstrap the first admins.
+     * Checks if the email associated with the incoming request's user ID (in the users collection)
+     * is one of the designated admin emails. This is used to bootstrap the first admins.
+     * It looks up the email from the /users/{uid} document that is being created.
      */
-    function isSigningUpAsAdmin() {
+    function isSigningUpAsAdmin(uid) {
       return request.resource.data.email in ['reddykesava60@gmail.com', 'sunnysuhas108@gmail.com'];
     }
 
@@ -149,11 +150,13 @@ service cloud.firestore {
 
     /**
      * @description A private collection for managing admin roles. Only other admins
-     *              can read or write to this collection.
+     *              can read or write to this collection. New admins can be created
+     *              during signup if their email is in the approved list.
      * @path /roles_admin/{userId}
      */
     match /roles_admin/{userId} {
-      allow get, list, create, update, delete: if isAdmin() || isSigningUpAsAdmin();
+      allow read, write: if isAdmin();
+      allow create: if isSigningUpAsAdmin(userId);
     }
   }
 }
