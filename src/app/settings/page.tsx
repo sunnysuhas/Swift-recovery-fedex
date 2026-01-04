@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useAuth, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirebase } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -17,13 +18,17 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { auth, firestore } = useFirebase();
+  const storage = getStorage();
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-1');
 
@@ -31,8 +36,47 @@ export default function SettingsPage() {
     if (user) {
       setDisplayName(user.displayName || '');
       setEmail(user.email || '');
+      setPhotoURL(user.photoURL || userAvatar?.imageUrl || '');
     }
-  }, [user]);
+  }, [user, userAvatar]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploading(true);
+    try {
+      const avatarRef = storageRef(storage, `avatars/${user.uid}/${file.name}`);
+      const snapshot = await uploadBytes(avatarRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      setPhotoURL(downloadURL); // Optimistically update UI
+
+      // Now update auth and firestore
+      await updateProfile(user, { photoURL: downloadURL });
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, { photoURL: downloadURL }, { merge: true });
+
+      toast({
+        title: 'Avatar Updated!',
+        description: 'Your new avatar has been saved.',
+      });
+
+    } catch (error: any) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: error.message || "Could not upload your new avatar.",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSaveChanges = async () => {
     if (!user || !auth.currentUser || !firestore) {
@@ -88,17 +132,32 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={user?.photoURL || userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint} />
+              <Avatar className="h-20 w-20 relative group">
+                <AvatarImage src={photoURL} data-ai-hint={userAvatar?.imageHint} />
                 <AvatarFallback>
                   {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
                 </AvatarFallback>
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  </div>
+                )}
               </Avatar>
               <div className="grid gap-1">
                 <h3 className="text-lg font-semibold">{displayName || 'Anonymous User'}</h3>
                 <p className="text-sm text-muted-foreground">{email}</p>
               </div>
-              <Button variant="outline" className="ml-auto">Change Avatar</Button>
+              <Button variant="outline" className="ml-auto" onClick={handleAvatarClick} disabled={isUploading}>
+                Change Avatar
+              </Button>
+              <Input 
+                type="file" 
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/png, image/jpeg, image/gif" 
+                disabled={isUploading}
+              />
             </div>
             <Separator />
             <div className="grid md:grid-cols-2 gap-4">
