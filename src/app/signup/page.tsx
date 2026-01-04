@@ -49,7 +49,7 @@ export default function SignupPage() {
         // This is a hack for the demo. In a real app, dcaId would be set through a proper admin/invite flow.
         const isDcaAgent = email.includes('dca');
         const userRole = isDcaAgent ? 'DCA_Agent' : 'Admin';
-        const dcaId = isDcaAgent ? 'dca-2' : undefined; // Assign to 'Credit Solutions' for demo
+        const dcaId = isDcaAgent ? 'dca-2' : null; // Assign to 'Credit Solutions' for demo
 
         // Create a user document in Firestore
         await setDoc(doc(firestore, "users", user.uid), {
