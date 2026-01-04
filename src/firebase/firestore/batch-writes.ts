@@ -11,8 +11,8 @@ import { Case, DCA } from '@/lib/types';
 function parseCase(data: any): Omit<Case, 'id'> {
     return {
       debtor: {
-        name: data.debtor_name,
-        accountId: data.debtor_accountId
+        name: data.debtorName || data.debtor_name || data['debtor.name'],
+        accountId: data.debtorAccountId || data.debtor_accountId || data['debtor.accountId']
       },
       amount: parseFloat(data.amount),
       currency: data.currency,
@@ -46,6 +46,7 @@ export function batchWriteCases(db: Firestore, data: any[]) {
         batch.set(docRef, { ...parsedData, id: caseId });
     });
     return batch.commit().catch(error => {
+        console.error("Batch write error:", error);
         errorEmitter.emit(
             'permission-error',
             new FirestorePermissionError({
@@ -54,6 +55,7 @@ export function batchWriteCases(db: Firestore, data: any[]) {
                 requestResourceData: data,
             })
         )
+        throw error;
     })
 }
 
@@ -66,6 +68,7 @@ export function batchWriteDcas(db: Firestore, data: any[]) {
         batch.set(docRef, { ...parsedData, id: dcaId });
     });
     return batch.commit().catch(error => {
+        console.error("Batch write error:", error);
         errorEmitter.emit(
             'permission-error',
             new FirestorePermissionError({
@@ -74,5 +77,6 @@ export function batchWriteDcas(db: Firestore, data: any[]) {
                 requestResourceData: data,
             })
         )
+        throw error;
     })
 }
