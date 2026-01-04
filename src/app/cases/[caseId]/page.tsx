@@ -1,9 +1,6 @@
-import { notFound } from 'next/navigation';
-import {
-  getCaseById,
-  getDcaById,
-  getAuditLogsByCaseId,
-} from '@/lib/mock-data';
+'use client';
+
+import { notFound, useParams } from 'next/navigation';
 import AppHeader from '@/components/layout/header';
 import {
   Card,
@@ -18,8 +15,6 @@ import {
   DollarSign,
   User,
   Calendar,
-  Hash,
-  BarChart,
   Shield,
   Clock,
   AlertTriangle,
@@ -28,16 +23,44 @@ import { CaseTimeline } from '@/components/cases/case-timeline';
 import { ExplainPriorityAction } from '@/components/cases/explain-priority-action';
 import { GeneratePlanAction } from '@/components/cases/generate-plan-action';
 import { Button } from '@/components/ui/button';
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { Case, DCA, AuditLog } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function CaseDetailPage({ params }: { params: { caseId: string } }) {
-  const caseItem = getCaseById(params.caseId);
+export default function CaseDetailPage() {
+  const params = useParams();
+  const caseId = params.caseId as string;
+  const firestore = useFirestore();
 
-  if (!caseItem) {
-    notFound();
+  const caseRef = useMemoFirebase(
+    () => (firestore && caseId ? doc(firestore, 'cases', caseId) : null),
+    [firestore, caseId]
+  );
+  const { data: caseItem, isLoading: caseLoading } = useDoc<Case>(caseRef);
+
+  const dcaId = caseItem?.assignedDCA;
+  const dcaRef = useMemoFirebase(
+    () => (firestore && dcaId ? doc(firestore, 'dcas', dcaId) : null),
+    [firestore, dcaId]
+  );
+  const { data: dca, isLoading: dcaLoading } = useDoc<DCA>(dcaRef);
+
+  const auditLogsQuery = useMemoFirebase(
+    () => (firestore && caseId ? query(collection(firestore, 'auditLogs'), where('caseId', '==', caseId)) : null),
+    [firestore, caseId]
+  );
+  const { data: auditLogs, isLoading: auditLoading } = useCollection<AuditLog>(auditLogsQuery);
+
+  const isLoading = caseLoading || dcaLoading || auditLoading;
+
+  if (isLoading) {
+    return <CaseDetailSkeleton />;
   }
 
-  const dca = getDcaById(caseItem.assignedDCA);
-  const auditLogs = getAuditLogsByCaseId(caseItem.id);
+  if (!caseItem) {
+    return notFound();
+  }
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -131,7 +154,7 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <CaseTimeline logs={auditLogs} caseHistory={caseItem.caseHistory} />
+              <CaseTimeline logs={auditLogs || []} caseHistory={caseItem.caseHistory} />
             </CardContent>
           </Card>
         </div>
@@ -181,5 +204,65 @@ function InfoItem({
         <p className="font-medium">{value}</p>
       </div>
     </div>
+  );
+}
+
+function CaseDetailSkeleton() {
+  return (
+    <main className="flex flex-1 flex-col">
+      <AppHeader title="Case Details" />
+      <div className="flex-1 p-4 md:p-6 grid gap-6 md:grid-cols-3 lg:grid-cols-4">
+        <div className="md:col-span-2 lg:col-span-3 space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+              <Separator className="my-4" />
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="md:col-span-1 lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-3/4" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </main>
   );
 }

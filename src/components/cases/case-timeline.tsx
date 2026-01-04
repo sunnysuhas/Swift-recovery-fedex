@@ -12,14 +12,15 @@ export function CaseTimeline({ logs, caseHistory }: CaseTimelineProps) {
     const [date, ...actionParts] = entry.split(': ');
     return {
       id: `hist-${date}`,
-      timestamp: new Date(date),
+      // This is a hack, in a real app timestamps would be consistent
+      timestamp: new Date(date.includes(',') ? date : `${date} 2024`),
       user: 'System/DCA',
       action: actionParts.join(': '),
       details: '',
     };
   });
 
-  const allItems = [...logs, ...historyItems]
+  const allItems = [...logs.map(l => ({...l, timestamp: l.timestamp.toDate()})), ...historyItems]
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   return (

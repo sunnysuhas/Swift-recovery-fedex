@@ -1,3 +1,4 @@
+'use client';
 
 import AppHeader from '@/components/layout/header';
 import { KpiCard } from '@/components/dashboard/kpi-card';
@@ -13,10 +14,10 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  getAgingData,
-  getDcaPerformance,
-  getRecoveryData,
-} from '@/lib/mock-data';
+  DcaPerformanceDataPoint,
+  RecoveryDataPoint,
+  AgingDataPoint,
+} from '@/lib/types';
 import {
   DollarSign,
   TrendingUp,
@@ -33,9 +34,22 @@ import {
 } from '@/components/ui/select';
 
 export default function ReportsPage() {
-  const recoveryData = getRecoveryData();
-  const agingData = getAgingData();
-  const dcaPerformance = getDcaPerformance();
+  // Mocked data for charts as we don't have historical/aggregated collections yet
+  const recoveryData: RecoveryDataPoint[] = [
+    { month: 'Jan', rate: 65 }, { month: 'Feb', rate: 68 }, { month: 'Mar', rate: 70 },
+    { month: 'Apr', rate: 72 }, { month: 'May', rate: 69 }, { month: 'Jun', rate: 71 },
+  ];
+  const agingData: AgingDataPoint[] = [
+    { range: '0-30 Days', value: 150000 }, { range: '31-60 Days', value: 250000 },
+    { range: '61-90 Days', value: 450000 }, { range: '91-120 Days', value: 300000 },
+    { range: '>120 Days', value: 800000 },
+  ];
+  const dcaPerformance: DcaPerformanceDataPoint[] = [
+      { name: 'Global Recovery', 'Recovery Rate': 78 },
+      { name: 'Credit Solutions', 'Recovery Rate': 85 },
+      { name: 'Apex Financial', 'Recovery Rate': 72 },
+      { name: 'National Debt', 'Recovery Rate': 65 },
+  ];
 
   return (
     <main className="flex flex-1 flex-col">

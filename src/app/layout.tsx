@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'RecoveryAI',
@@ -38,12 +39,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider>
-            <SidebarNav />
-            <div className="flex flex-col flex-1 h-full min-w-0">
-              {children}
-            </div>
-          </SidebarProvider>
+          <FirebaseClientProvider>
+            <SidebarProvider>
+              <SidebarNav />
+              <div className="flex flex-col flex-1 h-full min-w-0">
+                {children}
+              </div>
+            </SidebarProvider>
+          </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>
       </body>

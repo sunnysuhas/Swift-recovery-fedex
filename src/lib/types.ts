@@ -1,3 +1,5 @@
+import { type Timestamp } from 'firebase/firestore';
+
 export type CaseStatus =
   | 'New'
   | 'Assigned'
@@ -9,12 +11,14 @@ export type CaseStatus =
 
 export type SlaStatus = 'On Track' | 'At Risk' | 'Breached';
 
+export interface Debtor {
+  name: string;
+  accountId: string;
+}
+
 export interface Case {
   id: string;
-  debtor: {
-    name: string;
-    accountId: string;
-  };
+  debtor: Debtor;
   amount: number;
   currency: string;
   aging: number; // days
@@ -38,8 +42,23 @@ export interface DCA {
 
 export interface AuditLog {
   id: string;
-  timestamp: Date;
+  timestamp: Timestamp;
   user: string;
   action: string;
   details: string;
+}
+
+export interface RecoveryDataPoint {
+  month: string;
+  rate: number;
+}
+
+export interface AgingDataPoint {
+  range: string;
+  value: number;
+}
+
+export interface DcaPerformanceDataPoint {
+  name: string;
+  'Recovery Rate': number;
 }
