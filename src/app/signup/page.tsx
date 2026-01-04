@@ -21,6 +21,8 @@ import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+const ADMIN_EMAILS = ['reddykesava60@gmail.com', 'sunnysuhas108@gmail.com'];
+
 export default function SignupPage() {
   const router = useRouter();
   const auth = useAuth();
@@ -50,12 +52,11 @@ export default function SignupPage() {
         // Update profile in Firebase Auth
         await updateProfile(user, { displayName });
 
-        // This is a hack for the demo. In a real app, dcaId would be set through a proper admin/invite flow.
         const isDcaAgent = email.includes('dca');
-        const userRole = isDcaAgent ? 'DCA_Agent' : 'Admin';
-        const dcaId = isDcaAgent ? 'dca-2' : null; // Assign to 'Credit Solutions' for demo
+        const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+        const userRole = isAdmin ? 'Admin' : (isDcaAgent ? 'DCA_Agent' : 'Admin'); // Default to Admin
+        const dcaId = isDcaAgent ? 'dca-2' : null;
 
-        // Use a batch write to create user doc and admin role doc atomically
         const batch = writeBatch(firestore);
 
         const userDocRef = doc(firestore, "users", user.uid);
@@ -69,7 +70,6 @@ export default function SignupPage() {
             photoURL: user.photoURL
         });
 
-        // CRITICAL FIX: If the user is an Admin, create the corresponding document in /roles_admin
         if (userRole === 'Admin') {
             const adminRoleRef = doc(firestore, "roles_admin", user.uid);
             batch.set(adminRoleRef, { role: 'Admin', createdAt: new Date() });
