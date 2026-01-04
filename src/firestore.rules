@@ -53,6 +53,14 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    
+    /**
+     * Checks if the email used for signup is one of the designated admin emails.
+     * This is used to bootstrap the first admins.
+     */
+    function isSigningUpAsAdmin() {
+      return request.resource.data.email in ['reddykesava60@gmail.com', 'sunnysuhas108@gmail.com'];
+    }
 
     /**
      * Checks if the requesting user has an admin role by checking for the
@@ -89,8 +97,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && isExistingDoc() && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && isExistingDoc();
       allow delete: if isOwner(userId) && isExistingDoc();
     }
 
@@ -113,7 +121,7 @@ service cloud.firestore {
      * @path /customers/{customerId}
      */
     match /customers/{customerId} {
-      allow get, list: if isAdmin();
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
@@ -145,7 +153,7 @@ service cloud.firestore {
      * @path /roles_admin/{userId}
      */
     match /roles_admin/{userId} {
-      allow get, list, create, update, delete: if isAdmin();
+      allow get, list, create, update, delete: if isAdmin() || isSigningUpAsAdmin();
     }
   }
 }

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
@@ -51,17 +51,17 @@ export default function SignupPage() {
 
         // Update profile in Firebase Auth
         await updateProfile(user, { displayName });
-
-        const isDcaAgent = email.includes('dca');
+        
         const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+        const isDcaAgent = !isAdmin && email.includes('dca'); // Assume non-admin with 'dca' in email is an agent
         const userRole = isAdmin ? 'Admin' : (isDcaAgent ? 'DCA_Agent' : 'Admin'); // Default to Admin
-        const dcaId = isDcaAgent ? 'dca-2' : null;
+        const dcaId = isDcaAgent ? 'dca-2' : null; // Example DCA ID
 
         const batch = writeBatch(firestore);
 
+        // 1. Create the main user document
         const userDocRef = doc(firestore, "users", user.uid);
         batch.set(userDocRef, {
-            id: user.uid,
             uid: user.uid,
             email: user.email,
             displayName: displayName,
@@ -70,9 +70,10 @@ export default function SignupPage() {
             photoURL: user.photoURL
         });
 
-        if (userRole === 'Admin') {
+        // 2. If the user is an admin, create a corresponding document in roles_admin
+        if (isAdmin) {
             const adminRoleRef = doc(firestore, "roles_admin", user.uid);
-            batch.set(adminRoleRef, { role: 'Admin', createdAt: new Date() });
+            batch.set(adminRoleRef, { role: 'Admin', createdAt: serverTimestamp() });
         }
 
         await batch.commit();
