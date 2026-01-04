@@ -110,9 +110,7 @@ service cloud.firestore {
      */
     match /dcas/{dcaId} {
       allow get, list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && isExistingDoc();
-      allow delete: if isAdmin() && isExistingDoc();
+      allow write: if isAdmin();
     }
 
     /**
@@ -123,7 +121,7 @@ service cloud.firestore {
      */
     match /customers/{customerId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
     /**
@@ -133,7 +131,7 @@ service cloud.firestore {
      */
     match /cases/{caseId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
     /**
