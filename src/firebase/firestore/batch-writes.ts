@@ -7,11 +7,13 @@ import { User } from 'firebase/auth';
 
 function findValue(data: any, keys: string[]): any {
     const dataKeys = Object.keys(data).reduce((acc, key) => {
-        acc[key.toLowerCase()] = key;
+        // Normalize key by converting to lower case and removing quotes
+        acc[key.toLowerCase().replace(/"/g, '')] = key;
         return acc;
     }, {} as Record<string, string>);
 
     for (const key of keys) {
+        // Normalize search key
         const foundKey = dataKeys[key.toLowerCase()];
         if (foundKey && data[foundKey] !== undefined) {
             return data[foundKey];
@@ -57,7 +59,7 @@ function parseDca(data: any): Omit<DCA, 'id'> {
 export function batchWriteCases(db: Firestore, data: any[]) {
   const batch = writeBatch(db);
   data.forEach((item) => {
-    const caseId = item.id || `case-${Math.random().toString(36).substring(2, 9)}`;
+    const caseId = findValue(item, ['id', 'caseId']) || `case-${Math.random().toString(36).substring(2, 9)}`;
     const docRef = doc(db, 'cases', caseId);
     const parsedData = parseCase(item);
     batch.set(docRef, { ...parsedData, id: caseId });
