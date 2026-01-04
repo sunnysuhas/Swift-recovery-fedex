@@ -1,0 +1,151 @@
+/**
+ * This ruleset enforces a role-based access control (RBAC) model, with a primary
+ * distinction between 'Admin' users and all other authenticated users. The security
+ * model is designed for high performance and clarity by denormalizing authorization
+ * data.
+ *
+ * Core Philosophy:
+ * - Admin-centric control: A special `/roles_admin` collection provides a fast and
+ *   scalable way to identify administrators. Admins generally have read access to
+ *   all data and write access to administrative or reference data collections.
+ * - User data privacy: Non-admin users can only access their own user document
+ *   and create data linked to their identity (e.g., audit logs). They cannot
+ *   list or view other users' information.
+ * - Secure by default: Access to sensitive data collections is restricted by default.
+ *
+ * Data Structure:
+ * - The structure uses top-level collections for primary entities like `users`,
+ *   `cases`, `dcas`, `customers`, and `auditLogs`.
+ * - A dedicated `/roles_admin/{userId}` collection serves as a performant lookup
+ *   table for admin roles, avoiding the need to store a role string on a user
+ *   document that could be modified.
+ *
+ * Key Security Decisions:
+ * - Admin Identification: A user is considered an admin if a document with their
+ *   UID exists in the `/roles_admin` collection. This is checked using `exists()`.
+ * - User Enumeration is Disallowed: The `list` permission on the top-level `/users`
+ *   collection is denied for non-admins to prevent potential data leaks.
+ * - `cases` Collection: Readable by any signed-in user for now. Write access is
+ *   restricted to admins. This allows the current UI to function while a more
+ *   granular DCA-based security model is developed.
+ * - Immutability of Audit Logs: The `/auditLogs` collection is append-only. Once an
+ *   entry is created, it cannot be modified or deleted, ensuring data integrity.
+ *
+ * Denormalization for Authorization:
+ * - The `/roles_admin` collection is the primary example of denormalization.
+ *   Instead of checking a field on a `/users` document, we do a direct lookup,
+ *   which is much more secure and efficient for rules.
+ * - The `userId` field is denormalized onto `/auditLogs` documents, allowing a
+ *   user to access their own log entries without needing a slow `get()` call
+ *   to a parent document.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helper Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the requesting user has an admin role by checking for the
+     * existence of their user ID in the dedicated admin roles collection.
+     */
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the requesting user's UID matches the provided userId.
+     * This is the foundation for document ownership.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * Verifies that a document exists. Critical for update/delete operations.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Manages user profile data. Users can create, read, and manage
+     *              their own profile. Admins can read any user profile.
+     * @path /users/{userId}
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && isExistingDoc() && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description Stores reference data for Debt Collection Agencies. This data
+     *              is readable by any authenticated user but managed only by admins.
+     * @path /dcas/{dcaId}
+     */
+    match /dcas/{dcaId} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && isExistingDoc();
+      allow delete: if isAdmin() && isExistingDoc();
+    }
+
+    /**
+     * @description Stores sensitive customer information. Access is strictly
+     *              limited to administrators for reads, but any authenticated
+     *              user can create them (e.g. through an intake form).
+     * @path /customers/{customerId}
+     */
+    match /customers/{customerId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Stores debt collection cases. Readable by any signed-in user
+     *              for demo purposes. Write access restricted to admins.
+     * @path /cases/{caseId}
+     */
+    match /cases/{caseId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description An append-only log of system events. Users can create their own
+     *              log entries, and admins can read all logs. Modification is disallowed.
+     * @path /auditLogs/{auditLogId}
+     */
+    match /auditLogs/{auditLogId} {
+      allow get: if isAdmin() || (isOwner(resource.data.userId) && isExistingDoc());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description A private collection for managing admin roles. Only other admins
+     *              can read or write to this collection.
+     * @path /roles_admin/{userId}
+     */
+    match /roles_admin/{userId} {
+      allow get, list, create, update, delete: if isAdmin();
+    }
+  }
+}

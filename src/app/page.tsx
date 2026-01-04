@@ -18,28 +18,29 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import AppHeader from '@/components/layout/header';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { Case, RecoveryDataPoint, AgingDataPoint, DcaPerformanceDataPoint } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
   const casesQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'cases') : null),
-    [firestore]
+    () => (firestore && user ? collection(firestore, 'cases') : null),
+    [firestore, user]
   );
   const { data: cases, isLoading: casesLoading } = useCollection<Case>(casesQuery);
 
   const priorityCasesQuery = useMemoFirebase(
-    () => (firestore ? query(
+    () => (firestore && user ? query(
         collection(firestore, 'cases'),
         where('priorityScore', '>', 90),
         orderBy('priorityScore', 'desc'),
         limit(10)
       ) : null),
-    [firestore]
+    [firestore, user]
   );
   const { data: priorityCases, isLoading: priorityCasesLoading } = useCollection<Case>(priorityCasesQuery);
 
@@ -62,6 +63,8 @@ export default function DashboardPage() {
   
   const totalOutstanding = cases ? cases.reduce((sum, c) => sum + c.amount, 0) : 0;
   const activeCases = cases ? cases.length : 0;
+  
+  const isLoading = casesLoading || isUserLoading;
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
@@ -69,7 +72,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Total Outstanding Debt"
-          value={`$${totalOutstanding.toLocaleString()}`}
+          value={isLoading ? <Skeleton className="h-6 w-32" /> : `$${totalOutstanding.toLocaleString()}`}
           change="+2.5% from last month"
           icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
         />
@@ -87,8 +90,8 @@ export default function DashboardPage() {
         />
         <KpiCard
           title="Active Cases"
-          value={activeCases.toString()}
-          change={`${cases?.filter(c => c.status === 'New').length || 0} new`}
+          value={isLoading ? <Skeleton className="h-6 w-16" /> : activeCases.toString()}
+          change={isLoading ? ' ' : `${cases?.filter(c => c.status === 'New').length || 0} new`}
           icon={<Users className="h-4 w-4 text-muted-foreground" />}
         />
       </div>
@@ -116,7 +119,7 @@ export default function DashboardPage() {
             <CardTitle>High-Priority Cases</CardTitle>
           </CardHeader>
           <CardContent>
-            {priorityCasesLoading ? <Skeleton className="h-40 w-full" /> : <PriorityCasesTable cases={priorityCases || []} />}
+            {priorityCasesLoading || isUserLoading ? <Skeleton className="h-40 w-full" /> : <PriorityCasesTable cases={priorityCases || []} />}
           </CardContent>
         </Card>
         <Card>

@@ -18,12 +18,13 @@ import {
   Shield,
   Clock,
   AlertTriangle,
+  BarChart,
 } from 'lucide-react';
 import { CaseTimeline } from '@/components/cases/case-timeline';
 import { ExplainPriorityAction } from '@/components/cases/explain-priority-action';
 import { GeneratePlanAction } from '@/components/cases/generate-plan-action';
 import { Button } from '@/components/ui/button';
-import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Case, DCA, AuditLog } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,23 +33,24 @@ export default function CaseDetailPage() {
   const params = useParams();
   const caseId = params.caseId as string;
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const caseRef = useMemoFirebase(
-    () => (firestore && caseId ? doc(firestore, 'cases', caseId) : null),
-    [firestore, caseId]
+    () => (firestore && caseId && user ? doc(firestore, 'cases', caseId) : null),
+    [firestore, caseId, user]
   );
   const { data: caseItem, isLoading: caseLoading } = useDoc<Case>(caseRef);
 
   const dcaId = caseItem?.assignedDCA;
   const dcaRef = useMemoFirebase(
-    () => (firestore && dcaId ? doc(firestore, 'dcas', dcaId) : null),
-    [firestore, dcaId]
+    () => (firestore && dcaId && user ? doc(firestore, 'dcas', dcaId) : null),
+    [firestore, dcaId, user]
   );
   const { data: dca, isLoading: dcaLoading } = useDoc<DCA>(dcaRef);
 
   const auditLogsQuery = useMemoFirebase(
-    () => (firestore && caseId ? query(collection(firestore, 'auditLogs'), where('caseId', '==', caseId)) : null),
-    [firestore, caseId]
+    () => (firestore && caseId && user ? query(collection(firestore, 'auditLogs'), where('caseId', '==', caseId)) : null),
+    [firestore, caseId, user]
   );
   const { data: auditLogs, isLoading: auditLoading } = useCollection<AuditLog>(auditLogsQuery);
 

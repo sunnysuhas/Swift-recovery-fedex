@@ -11,24 +11,26 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { Case, DCA } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DcaPortalPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
+  
   // In a real app, we'd get the logged-in DCA's ID from the user object.
   // For now, we'll continue to mock it for demonstration.
   const myDcaId = 'dca-2';
 
-  const myDcaRef = useMemoFirebase(() => (firestore && myDcaId ? doc(firestore, 'dcas', myDcaId) : null), [firestore, myDcaId]);
+  const myDcaRef = useMemoFirebase(() => (firestore && myDcaId && user ? doc(firestore, 'dcas', myDcaId) : null), [firestore, myDcaId, user]);
   const { data: myDca, isLoading: dcaLoading } = useDoc<DCA>(myDcaRef);
 
-  const myCasesQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'cases'), where('assignedDCA', '==', myDcaId)) : null), [firestore, myDcaId]);
+  const myCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('assignedDCA', '==', myDcaId)) : null), [firestore, myDcaId, user]);
   const { data: myCases, isLoading: casesLoading } = useCollection<Case>(myCasesQuery);
 
-  const allDcasQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'dcas') : null), [firestore]);
+  const allDcasQuery = useMemoFirebase(() => (firestore && user ? collection(firestore, 'dcas') : null), [firestore, user]);
   const { data: allDcas, isLoading: allDcasLoading } = useCollection<DCA>(allDcasQuery);
   
   const isLoading = dcaLoading || casesLoading || allDcasLoading;
@@ -43,25 +45,25 @@ export default function DcaPortalPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <KpiCard
                 title="Assigned Cases"
-                value={myCases?.length.toString() || '0'}
-                change={`${myCases?.filter(c => c.status === 'New').length || 0} new`}
+                value={isLoading ? <Skeleton className="h-6 w-12" /> : myCases?.length.toString() || '0'}
+                change={isLoading ? ' ' : `${myCases?.filter(c => c.status === 'New').length || 0} new`}
                 icon={<FileText className="h-4 w-4 text-muted-foreground" />}
             />
             <KpiCard
                 title="Total Debt Assigned"
-                value={`$${totalDebt.toLocaleString()}`}
+                value={isLoading ? <Skeleton className="h-6 w-24" /> : `$${totalDebt.toLocaleString()}`}
                 change="in active collections"
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
             />
             <KpiCard
                 title="Your Recovery Rate"
-                value={`${myDca?.recoveryRate || 0}%`}
+                value={isLoading ? <Skeleton className="h-6 w-16" /> : `${myDca?.recoveryRate || 0}%`}
                 change="All-time performance"
                 icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
             />
             <KpiCard
                 title="At-Risk SLAs"
-                value={atRiskCasesCount.toString()}
+                value={isLoading ? <Skeleton className="h-6 w-12" /> : atRiskCasesCount.toString()}
                 change="Require immediate attention"
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
             />

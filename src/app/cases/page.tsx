@@ -3,27 +3,28 @@
 import AppHeader from '@/components/layout/header';
 import { CasesTable } from '@/components/cases/cases-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Case, DCA } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AllCasesPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
 
-  const casesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'cases') : null), [firestore]);
+  const casesQuery = useMemoFirebase(() => (firestore && user ? collection(firestore, 'cases') : null), [firestore, user]);
   const { data: cases, isLoading: casesLoading } = useCollection<Case>(casesQuery);
 
-  const dcasQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'dcas') : null), [firestore]);
+  const dcasQuery = useMemoFirebase(() => (firestore && user ? collection(firestore, 'dcas') : null), [firestore, user]);
   const { data: dcas, isLoading: dcasLoading } = useCollection<DCA>(dcasQuery);
   
-  const newCasesQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'cases'), where('status', '==', 'New')) : null), [firestore]);
+  const newCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('status', '==', 'New')) : null), [firestore, user]);
   const { data: newCases } = useCollection<Case>(newCasesQuery);
 
-  const assignedCasesQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'cases'), where('status', '==', 'Assigned')) : null), [firestore]);
+  const assignedCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('status', '==', 'Assigned')) : null), [firestore, user]);
   const { data: assignedCases } = useCollection<Case>(assignedCasesQuery);
 
-  const atRiskCasesQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'cases'), where('slaStatus', 'in', ['At Risk', 'Breached'])) : null), [firestore]);
+  const atRiskCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('slaStatus', 'in', ['At Risk', 'Breached'])) : null), [firestore, user]);
   const { data: atRiskCases } = useCollection<Case>(atRiskCasesQuery);
 
   const isLoading = casesLoading || dcasLoading;

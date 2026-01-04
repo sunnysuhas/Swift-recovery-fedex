@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type KpiCardProps = {
   title: string;
-  value: string;
+  value: string | React.ReactNode;
   change: string;
   icon: React.ReactNode;
 };
