@@ -53,6 +53,7 @@ export default function SignupPage() {
 
         // Create a user document in Firestore
         await setDoc(doc(firestore, "users", user.uid), {
+            id: user.uid, // Add this line to satisfy the security rule
             uid: user.uid,
             email: user.email,
             displayName: displayName,
