@@ -2,7 +2,7 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage';
 
@@ -34,9 +34,27 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  const auth = getAuth(firebaseApp);
+
+  // This is a temporary solution for the demo to handle server-side actions
+  // that can't directly sign in a user.
+  if (typeof window !== 'undefined') {
+    const handleCredential = async (cred: string) => {
+        try {
+            const userCredential = await signInWithCustomToken(auth, cred);
+            console.log('Signed in with custom token:', userCredential.user);
+        } catch (error) {
+            console.error("Error signing in with custom token", error);
+        }
+    }
+    // @ts-ignore
+    window.handleCredential = handleCredential;
+  }
+
+
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
+    auth,
     firestore: getFirestore(firebaseApp),
     storage: getStorage(firebaseApp),
   };

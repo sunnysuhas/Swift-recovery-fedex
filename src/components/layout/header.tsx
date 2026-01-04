@@ -20,6 +20,7 @@ import { useUser } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
+import { logout } from '@/app/auth/actions';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -34,6 +35,10 @@ const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-1');
 export default function AppHeader() {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
+
+  const handleLogout = async () => {
+    await logout();
+  }
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
@@ -80,7 +85,7 @@ export default function AppHeader() {
                     data-ai-hint={userAvatar?.imageHint}
                   />
                   <AvatarFallback>
-                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'A'}
+                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'A'}
                   </AvatarFallback>
                 </Avatar>
               )}
@@ -97,10 +102,10 @@ export default function AppHeader() {
               ) : (
                 <>
                   <p className="font-medium text-sm leading-none">
-                    {user?.displayName || 'Anonymous User'}
+                    {user?.displayName || 'User'}
                   </p>
                   <p className="text-xs text-muted-foreground leading-none mt-1">
-                    {user?.email || 'anon@fedex.com'}
+                    {user?.email || ''}
                   </p>
                 </>
               )}
@@ -111,7 +116,7 @@ export default function AppHeader() {
             </DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import AppHeader from '@/components/layout/header';
+import AppLayout from '@/components/layout/app-layout';
 
 export const metadata: Metadata = {
   title: 'RecoveryAI',
@@ -39,10 +39,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseClientProvider>
-            <div className="flex flex-col h-screen">
-              <AppHeader />
-              <main className="flex-1 overflow-y-auto">{children}</main>
-            </div>
+            <AppLayout>{children}</AppLayout>
           </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>
