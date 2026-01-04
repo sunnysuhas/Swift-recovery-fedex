@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import AppHeader from '@/components/layout/header';
 import {
   Card,
   CardContent,
@@ -53,7 +52,7 @@ export default function ImportDataPage() {
           return obj;
         }, {});
       });
-      setPreviewData(data.slice(0, 5)); // Show preview of first 5 rows
+      setPreviewData(data);
     };
     reader.readAsText(fileToParse);
   };
@@ -97,9 +96,11 @@ export default function ImportDataPage() {
   const headers = previewData.length > 0 ? Object.keys(previewData[0]) : [];
 
   return (
-    <main className="flex flex-1 flex-col">
-      <AppHeader title="Import Data" />
-      <div className="flex-1 p-4 md:p-6 grid gap-6 md:grid-cols-2">
+    <div className="flex-1 p-4 md:p-6">
+       <div className="flex items-center justify-between space-y-2 mb-4">
+        <h2 className="text-3xl font-bold tracking-tight">Import Data</h2>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle>Upload Data File</CardTitle>
@@ -174,7 +175,7 @@ export default function ImportDataPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {previewData.map((row, index) => (
+                  {previewData.slice(0, 5).map((row, index) => (
                     <TableRow key={index}>
                       {headers.map(header => <TableCell key={header}>{row[header]}</TableCell>)}
                     </TableRow>
@@ -189,6 +190,6 @@ export default function ImportDataPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }

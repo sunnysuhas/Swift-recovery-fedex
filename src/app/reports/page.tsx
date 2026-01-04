@@ -1,6 +1,5 @@
 'use client';
 
-import AppHeader from '@/components/layout/header';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { RecoveryRateChart } from '@/components/dashboard/recovery-rate-chart';
 import { AgingChart } from '@/components/dashboard/aging-chart';
@@ -52,9 +51,10 @@ export default function ReportsPage() {
   ];
 
   return (
-    <main className="flex flex-1 flex-col">
-      <AppHeader title="Reporting & Analytics" />
-      <div className="flex-1 p-4 md:p-6 space-y-6">
+    <div className="flex-1 p-4 md:p-6 space-y-6">
+        <div className="flex items-center justify-between space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">Reporting & Analytics</h2>
+        </div>
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <div>
@@ -154,6 +154,5 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
   );
 }

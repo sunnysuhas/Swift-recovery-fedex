@@ -1,23 +1,12 @@
 'use client';
 
-import {
-  DollarSign,
-  Users,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Wallet } from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { RecoveryRateChart } from '@/components/dashboard/recovery-rate-chart';
 import { AgingChart } from '@/components/dashboard/aging-chart';
 import { DcaPerformanceChart } from '@/components/dashboard/dca-performance-chart';
 import { PriorityCasesTable } from '@/components/dashboard/priority-cases-table';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import AppHeader from '@/components/layout/header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { Case, RecoveryDataPoint, AgingDataPoint, DcaPerformanceDataPoint } from '@/lib/types';
@@ -34,15 +23,19 @@ export default function DashboardPage() {
   const { data: cases, isLoading: casesLoading } = useCollection<Case>(casesQuery);
 
   const priorityCasesQuery = useMemoFirebase(
-    () => (firestore && user ? query(
-        collection(firestore, 'cases'),
-        where('priorityScore', '>', 90),
-        orderBy('priorityScore', 'desc'),
-        limit(10)
-      ) : null),
+    () =>
+      firestore && user
+        ? query(
+            collection(firestore, 'cases'),
+            where('priorityScore', '>', 90),
+            orderBy('priorityScore', 'desc'),
+            limit(10)
+          )
+        : null,
     [firestore, user]
   );
-  const { data: priorityCases, isLoading: priorityCasesLoading } = useCollection<Case>(priorityCasesQuery);
+  const { data: priorityCases, isLoading: priorityCasesLoading } =
+    useCollection<Case>(priorityCasesQuery);
 
   // Mocked data for charts as we don't have historical/aggregated collections yet
   const recoveryData: RecoveryDataPoint[] = [
@@ -55,20 +48,22 @@ export default function DashboardPage() {
     { range: '>120 Days', value: 800000 },
   ];
   const dcaPerformance: DcaPerformanceDataPoint[] = [
-      { name: 'Global Recovery', 'Recovery Rate': 78 },
-      { name: 'Credit Solutions', 'Recovery Rate': 85 },
-      { name: 'Apex Financial', 'Recovery Rate': 72 },
-      { name: 'National Debt', 'Recovery Rate': 65 },
+    { name: 'Global Recovery', 'Recovery Rate': 78 },
+    { name: 'Credit Solutions', 'Recovery Rate': 85 },
+    { name: 'Apex Financial', 'Recovery Rate': 72 },
+    { name: 'National Debt', 'Recovery Rate': 65 },
   ];
-  
+
   const totalOutstanding = cases ? cases.reduce((sum, c) => sum + c.amount, 0) : 0;
   const activeCases = cases ? cases.length : 0;
-  
+
   const isLoading = casesLoading || isUserLoading;
 
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <AppHeader title="Admin Dashboard" />
+    <div className="flex-1 space-y-4 p-8 pt-6">
+       <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Total Outstanding Debt"
@@ -91,7 +86,7 @@ export default function DashboardPage() {
         <KpiCard
           title="Active Cases"
           value={isLoading ? <Skeleton className="h-6 w-16" /> : activeCases.toString()}
-          change={isLoading ? ' ' : `${cases?.filter(c => c.status === 'New').length || 0} new`}
+          change={isLoading ? ' ' : `${cases?.filter((c) => c.status === 'New').length || 0} new`}
           icon={<Users className="h-4 w-4 text-muted-foreground" />}
         />
       </div>
@@ -119,7 +114,11 @@ export default function DashboardPage() {
             <CardTitle>High-Priority Cases</CardTitle>
           </CardHeader>
           <CardContent>
-            {priorityCasesLoading || isUserLoading ? <Skeleton className="h-40 w-full" /> : <PriorityCasesTable cases={priorityCases || []} />}
+            {priorityCasesLoading || isUserLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : (
+              <PriorityCasesTable cases={priorityCases || []} />
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -131,6 +130,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }

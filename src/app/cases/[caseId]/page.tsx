@@ -1,7 +1,6 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import AppHeader from '@/components/layout/header';
 import {
   Card,
   CardContent,
@@ -82,9 +81,11 @@ export default function CaseDetailPage() {
   };
 
   return (
-    <main className="flex flex-1 flex-col">
-      <AppHeader title={`Case Details: ${caseItem.id}`} />
-      <div className="flex-1 p-4 md:p-6 grid gap-6 md:grid-cols-3 lg:grid-cols-4">
+    <div className="flex-1 p-4 md:p-6">
+      <div className="flex items-center justify-between space-y-2 mb-4">
+        <h2 className="text-3xl font-bold tracking-tight">Case Details: {caseItem.id}</h2>
+      </div>
+      <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
         <div className="md:col-span-2 lg:col-span-3 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -185,7 +186,7 @@ export default function CaseDetailPage() {
           </Card>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -211,9 +212,11 @@ function InfoItem({
 
 function CaseDetailSkeleton() {
   return (
-    <main className="flex flex-1 flex-col">
-      <AppHeader title="Case Details" />
-      <div className="flex-1 p-4 md:p-6 grid gap-6 md:grid-cols-3 lg:grid-cols-4">
+    <main className="flex-1 p-4 md:p-6">
+       <div className="flex items-center justify-between space-y-2 mb-4">
+         <Skeleton className="h-8 w-64" />
+      </div>
+      <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
         <div className="md:col-span-2 lg:col-span-3 space-y-6">
           <Card>
             <CardHeader>

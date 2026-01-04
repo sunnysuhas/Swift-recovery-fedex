@@ -1,6 +1,5 @@
 'use client';
 
-import AppHeader from '@/components/layout/header';
 import { CasesTable } from '@/components/cases/cases-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -30,9 +29,10 @@ export default function AllCasesPage() {
   const isLoading = casesLoading || dcasLoading;
 
   return (
-    <main className="flex flex-1 flex-col">
-      <AppHeader title="All Cases" />
-      <div className="flex-1 p-4 md:p-6">
+    <div className="flex-1 p-4 md:p-6">
+        <div className="flex items-center justify-between space-y-2 mb-4">
+            <h2 className="text-3xl font-bold tracking-tight">All Cases</h2>
+        </div>
         <Tabs defaultValue="all">
           <div className="flex items-center">
             <TabsList>
@@ -60,6 +60,5 @@ export default function AllCasesPage() {
           )}
         </Tabs>
       </div>
-    </main>
   );
 }

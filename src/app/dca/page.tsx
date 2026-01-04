@@ -1,6 +1,5 @@
 'use client';
 
-import AppHeader from '@/components/layout/header';
 import { CasesTable } from '@/components/cases/cases-table';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { DollarSign, FileText, TrendingUp, Users } from 'lucide-react';
@@ -39,9 +38,10 @@ export default function DcaPortalPage() {
   const totalDebt = myCases?.reduce((sum, c) => sum + c.amount, 0) || 0;
 
   return (
-    <main className="flex flex-1 flex-col">
-      <AppHeader title={`${myDca?.name || 'DCA'} Portal`} />
-      <div className="flex-1 p-4 md:p-6 space-y-6">
+    <div className="flex-1 p-4 md:p-6 space-y-6">
+       <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">{myDca?.name || 'DCA'} Portal</h2>
+      </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <KpiCard
                 title="Assigned Cases"
@@ -79,6 +79,5 @@ export default function DcaPortalPage() {
             </CardContent>
         </Card>
       </div>
-    </main>
   );
 }
