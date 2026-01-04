@@ -1,0 +1,283 @@
+{
+  "entities": {
+    "Case": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Case",
+      "type": "object",
+      "description": "Represents a debt collection case.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the case."
+        },
+        "debtAmount": {
+          "type": "number",
+          "description": "The amount of debt owed in the case."
+        },
+        "aging": {
+          "type": "number",
+          "description": "The age of the debt in days."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Case)"
+        },
+        "dcaId": {
+          "type": "string",
+          "description": "Reference to Debt Collection Agency. (Relationship: DebtCollectionAgency 1:N Case)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the case (e.g., 'Open', 'In Progress', 'Closed')."
+        },
+        "priorityScore": {
+          "type": "number",
+          "description": "The AI-assigned priority score for the case."
+        }
+      },
+      "required": [
+        "id",
+        "debtAmount",
+        "aging",
+        "customerId",
+        "dcaId",
+        "status",
+        "priorityScore"
+      ]
+    },
+    "DebtCollectionAgency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DebtCollectionAgency",
+      "type": "object",
+      "description": "Represents a debt collection agency.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the debt collection agency."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the debt collection agency."
+        },
+        "contactName": {
+          "type": "string",
+          "description": "The name of the contact person at the agency."
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "The email address of the contact person at the agency.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "contactName",
+        "contactEmail"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer with debt.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the customer."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email"
+      ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Represents an audit log entry.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the audit log entry."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of the event.",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N AuditLog) The ID of the user who performed the action."
+        },
+        "action": {
+          "type": "string",
+          "description": "The action that was performed (e.g., 'Case Assigned', 'Status Updated')."
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional details about the event."
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "userId",
+        "action",
+        "details"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (e.g., 'Admin', 'DCA Agent')."
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "role"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Uses path-based ownership for private user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/debtCollectionAgencies/{dcaId}",
+        "definition": {
+          "entityName": "DebtCollectionAgency",
+          "schema": {
+            "$ref": "#/backend/entities/DebtCollectionAgency"
+          },
+          "description": "Stores Debt Collection Agency profiles.",
+          "params": [
+            {
+              "name": "dcaId",
+              "description": "The unique identifier of the debt collection agency."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores Customer profiles.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier of the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/debtCollectionAgencies/{dcaId}/cases/{caseId}",
+        "definition": {
+          "entityName": "Case",
+          "schema": {
+            "$ref": "#/backend/entities/Case"
+          },
+          "description": "Stores debt collection cases associated with a specific debt collection agency. Includes denormalized 'dcaId' and 'customerId' for authorization independence.",
+          "params": [
+            {
+              "name": "dcaId",
+              "description": "The unique identifier of the debt collection agency."
+            },
+            {
+              "name": "caseId",
+              "description": "The unique identifier of the case."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/auditLogs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Stores audit log entries.  Accessible only to admins or the user who created the entry. Includes the 'userId' for filtering logs by user.",
+          "params": [
+            {
+              "name": "auditLogId",
+              "description": "The unique identifier of the audit log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "adminRole",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Documents in this collection signify that a user is an administrator. Existence over content.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to provide a secure, scalable, and easily maintainable data model for the RecoveryAI application. It prioritizes authorization independence by denormalizing relevant authorization data and utilizes structural segregation to enforce consistent security postures across collections. Specifically, the chosen structure enhances Authorization Independence by embedding relevant role and membership information directly within the documents, eliminating the need for complex hierarchical `get()` calls in security rules. For collections storing information about Case entities that belong to Customers and DCAs, the structure denormalizes membership data into each document to avoid authorization checks on parent documents. This strategy improves performance and allows for atomic batch operations. Additionally, the structure is designed to be easily debuggable, with clear ownership and role assignments that are explicit in the data structure.\n\nThe structure also supports the QAPs (Rules are not Filters) principle. For the `cases` collection under `debtCollectionAgencies/{dcaId}`, role information related to the agency is stored within the `Case` documents. This allows secure list operations based solely on the data within the `Case` document itself without needing to filter based on separate role documents. This ensures that the security rules can be used to allow or deny list operations without querying the data in the rule, ensuring that rules are not filters.\n\nThe structure accommodates the application's requirements for case prioritization, DCA portal, admin dashboard, automated case assignment, SLA monitoring, audit logging, and reporting and analytics."
+  }
+}
