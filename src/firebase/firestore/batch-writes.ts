@@ -24,6 +24,7 @@ function parseCase(data: any): Omit<Case, 'id'> {
     lastCommunication: data.lastCommunication || data['Last Communication'],
     paymentBehavior: data.paymentBehavior || data['Payment Behavior'],
     caseHistory: data.caseHistory || data['Case History'],
+    actionPlan: data.actionPlan || data['Action Plan'] || ''
   };
 }
 
