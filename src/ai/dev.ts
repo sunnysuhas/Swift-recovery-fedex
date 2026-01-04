@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/summarize-case-history.ts';
+import '@/ai/flows/generate-case-action-plan.ts';
+import '@/ai/flows/explain-case-priority.ts';
