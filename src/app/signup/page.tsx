@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signup } from '@/app/auth/actions';
+import { useAuth, useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
@@ -21,6 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function SignupPage() {
   const router = useRouter();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -34,22 +38,45 @@ export default function SignupPage() {
     setIsLoading(true);
     setError(null);
 
-    const result = await signup(email, password, `${firstName} ${lastName}`);
-    
-    if (result.error) {
-      setError(result.error);
-      toast({
-        variant: "destructive",
-        title: "Signup Failed",
-        description: result.error,
-      });
-      setIsLoading(false);
-    } else {
-      toast({
-        title: "Signup Successful",
-        description: "Your account has been created.",
-      });
-      router.push("/");
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        const displayName = `${firstName} ${lastName}`;
+
+        // Update profile in Firebase Auth
+        await updateProfile(user, { displayName });
+
+        // This is a hack for the demo. In a real app, dcaId would be set through a proper admin/invite flow.
+        const isDcaAgent = email.includes('dca');
+        const userRole = isDcaAgent ? 'DCA_Agent' : 'Admin';
+        const dcaId = isDcaAgent ? 'dca-2' : undefined; // Assign to 'Credit Solutions' for demo
+
+        // Create a user document in Firestore
+        await setDoc(doc(firestore, "users", user.uid), {
+            uid: user.uid,
+            email: user.email,
+            displayName: displayName,
+            role: userRole,
+            dcaId: dcaId,
+            photoURL: user.photoURL
+        });
+
+        toast({
+            title: "Signup Successful",
+            description: "Your account has been created.",
+        });
+        router.push("/");
+
+    } catch (result: any) {
+        const errorMessage = result.message || 'An unknown error occurred.';
+        setError(errorMessage);
+        toast({
+            variant: "destructive",
+            title: "Signup Failed",
+            description: errorMessage,
+        });
+    } finally {
+        setIsLoading(false);
     }
   };
 

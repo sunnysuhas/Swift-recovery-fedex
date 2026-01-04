@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { login } from '@/app/auth/actions';
+import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import { Loader2 } from 'lucide-react';
@@ -21,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const router = useRouter();
+  const auth = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,22 +34,22 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
-    const result = await login(email, password);
-    
-    if (result.error) {
-      setError(result.error);
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: result.error,
-      });
-      setIsLoading(false);
-    } else {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: 'Login Successful',
         description: 'Welcome back!',
       });
       router.push('/');
+    } catch (result: any) {
+      const errorMessage = result.message || 'An unknown error occurred.';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: errorMessage,
+      });
+      setIsLoading(false);
     }
   };
 

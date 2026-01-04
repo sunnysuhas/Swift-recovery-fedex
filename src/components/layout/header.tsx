@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { BarChart3, FileText, Home, Settings, ShieldCheck, Upload, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/icons/logo';
@@ -16,11 +16,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
-import { logout } from '@/app/auth/actions';
+import { signOut } from 'firebase/auth';
+
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -35,9 +36,12 @@ const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-1');
 export default function AppHeader() {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
+    await signOut(auth);
+    router.push('/login');
   }
 
   return (
