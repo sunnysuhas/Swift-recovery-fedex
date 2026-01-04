@@ -5,27 +5,43 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Case, DCA, AuditLog } from '@/lib/types';
 import { User } from 'firebase/auth';
 
-function parseCase(data: any): Omit<Case, 'id'> {
-  const debtorName = data.debtorName || data.debtor_name || data['Debtor Name'] || data.debtor;
-  const debtorAccountId = data.debtorAccountId || data.debtor_accountId || data['Debtor Account ID'] || data.accountId;
+function findValue(data: any, keys: string[]): any {
+    const dataKeys = Object.keys(data).reduce((acc, key) => {
+        acc[key.toLowerCase()] = key;
+        return acc;
+    }, {} as Record<string, string>);
 
-  return {
-    debtor: {
-      name: debtorName,
-      accountId: debtorAccountId,
-    },
-    amount: parseFloat(data.amount || data.Amount),
-    currency: data.currency || data.Currency || 'USD',
-    aging: parseInt(data.aging || data.Aging, 10),
-    priorityScore: parseInt(data.priorityScore || data['Priority Score'], 10),
-    status: data.status || data.Status,
-    assignedDCA: data.assignedDCA || data['Assigned DCA'],
-    slaStatus: data.slaStatus || data['SLA Status'],
-    lastCommunication: data.lastCommunication || data['Last Communication'],
-    paymentBehavior: data.paymentBehavior || data['Payment Behavior'],
-    caseHistory: data.caseHistory || data['Case History'],
-    actionPlan: data.actionPlan || data['Action Plan'] || ''
-  };
+    for (const key of keys) {
+        const foundKey = dataKeys[key.toLowerCase()];
+        if (foundKey && data[foundKey] !== undefined) {
+            return data[foundKey];
+        }
+    }
+    return undefined;
+}
+
+
+function parseCase(data: any): Omit<Case, 'id'> {
+    const debtorName = findValue(data, ['debtorName', 'debtor_name', 'Debtor Name', 'debtor']);
+    const debtorAccountId = findValue(data, ['debtorAccountId', 'debtor_accountId', 'Debtor Account ID', 'accountId']);
+
+    return {
+        debtor: {
+        name: debtorName,
+        accountId: debtorAccountId,
+        },
+        amount: parseFloat(findValue(data, ['amount', 'Amount'])),
+        currency: findValue(data, ['currency', 'Currency']) || 'USD',
+        aging: parseInt(findValue(data, ['aging', 'Aging']), 10),
+        priorityScore: parseInt(findValue(data, ['priorityScore', 'Priority Score']), 10),
+        status: findValue(data, ['status', 'Status']),
+        assignedDCA: findValue(data, ['assignedDCA', 'Assigned DCA']),
+        slaStatus: findValue(data, ['slaStatus', 'SLA Status']),
+        lastCommunication: findValue(data, ['lastCommunication', 'Last Communication']),
+        paymentBehavior: findValue(data, ['paymentBehavior', 'Payment Behavior']),
+        caseHistory: findValue(data, ['caseHistory', 'Case History']),
+        actionPlan: findValue(data, ['actionPlan', 'Action Plan']) || ''
+    };
 }
 
 function parseDca(data: any): Omit<DCA, 'id'> {
