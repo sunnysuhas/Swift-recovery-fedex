@@ -1,5 +1,7 @@
 'use client';
 
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { CasesTable } from '@/components/cases/cases-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -7,25 +9,30 @@ import { collection, query, where } from 'firebase/firestore';
 import { Case, DCA } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function AllCasesPage() {
+function CasesPageContent() {
   const firestore = useFirestore();
   const { user } = useUser();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q');
 
   const casesQuery = useMemoFirebase(() => (firestore && user ? collection(firestore, 'cases') : null), [firestore, user]);
-  const { data: cases, isLoading: casesLoading } = useCollection<Case>(casesQuery);
+  const { data: allCases, isLoading: casesLoading } = useCollection<Case>(casesQuery);
 
   const dcasQuery = useMemoFirebase(() => (firestore && user ? collection(firestore, 'dcas') : null), [firestore, user]);
   const { data: dcas, isLoading: dcasLoading } = useCollection<DCA>(dcasQuery);
+
+  const filterCases = (cases: Case[] | null) => {
+    if (!cases) return [];
+    if (!searchQuery) return cases;
+    return cases.filter(c => c.debtor.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  };
+
+  const filteredCases = filterCases(allCases);
+
+  const newCases = filteredCases.filter(c => c.status === 'New');
+  const assignedCases = filteredCases.filter(c => c.status === 'Assigned');
+  const atRiskCases = filteredCases.filter(c => c.slaStatus === 'At Risk' || c.slaStatus === 'Breached');
   
-  const newCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('status', '==', 'New')) : null), [firestore, user]);
-  const { data: newCases } = useCollection<Case>(newCasesQuery);
-
-  const assignedCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('status', '==', 'Assigned')) : null), [firestore, user]);
-  const { data: assignedCases } = useCollection<Case>(assignedCasesQuery);
-
-  const atRiskCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('slaStatus', 'in', ['At Risk', 'Breached'])) : null), [firestore, user]);
-  const { data: atRiskCases } = useCollection<Case>(atRiskCasesQuery);
-
   const isLoading = casesLoading || dcasLoading;
 
   return (
@@ -45,20 +52,29 @@ export default function AllCasesPage() {
           {isLoading ? <Skeleton className="mt-4 h-[400px] w-full" /> : (
             <>
               <TabsContent value="all">
-                <CasesTable cases={cases || []} dcas={dcas || []} />
+                <CasesTable cases={filteredCases} dcas={dcas || []} />
               </TabsContent>
               <TabsContent value="new">
-                <CasesTable cases={newCases || []} dcas={dcas || []} />
+                <CasesTable cases={newCases} dcas={dcas || []} />
               </TabsContent>
               <TabsContent value="assigned">
-                <CasesTable cases={assignedCases || []} dcas={dcas || []} />
+                <CasesTable cases={assignedCases} dcas={dcas || []} />
               </TabsContent>
               <TabsContent value="at_risk">
-                <CasesTable cases={atRiskCases || []} dcas={dcas || []} />
+                <CasesTable cases={atRiskCases} dcas={dcas || []} />
               </TabsContent>
             </>
           )}
         </Tabs>
       </div>
+  );
+}
+
+
+export default function AllCasesPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-full w-full" />}>
+      <CasesPageContent />
+    </Suspense>
   );
 }

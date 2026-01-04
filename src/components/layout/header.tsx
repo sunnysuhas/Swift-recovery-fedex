@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BarChart3, FileText, Home, Settings, ShieldCheck, Upload, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/icons/logo';
@@ -21,6 +21,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
 import { signOut } from 'firebase/auth';
+import React from 'react';
 
 
 const menuItems = [
@@ -38,11 +39,29 @@ export default function AppHeader() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [searchValue, setSearchValue] = React.useState(searchParams.get('q') || '');
 
   const handleLogout = async () => {
     await signOut(auth);
     router.push('/login');
-  }
+  };
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const params = new URLSearchParams(searchParams);
+    if (searchValue) {
+      params.set('q', searchValue);
+    } else {
+      params.delete('q');
+    }
+    // Always navigate to the cases page for a new search
+    router.push(`/cases?${params.toString()}`);
+  };
+
+  React.useEffect(() => {
+    setSearchValue(searchParams.get('q') || '');
+  }, [searchParams]);
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
@@ -65,13 +84,15 @@ export default function AppHeader() {
         ))}
       </nav>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        <form className="ml-auto flex-1 sm:flex-initial">
+        <form onSubmit={handleSearch} className="ml-auto flex-1 sm:flex-initial">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                 type="search"
-                placeholder="Search cases..."
+                placeholder="Search cases by debtor..."
                 className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
                 />
             </div>
         </form>

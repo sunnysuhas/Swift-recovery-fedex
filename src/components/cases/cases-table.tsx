@@ -208,14 +208,9 @@ export function CasesTable({ cases, dcas }: CasesTableProps) {
     <Card>
       <CardContent className="p-0">
       <div className="flex items-center p-4">
-        <Input
-          placeholder="Filter by debtor..."
-          value={(table.getColumn('debtor')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('debtor')?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredRowModel().rows.length} of {cases.length} case(s) showing.
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -286,6 +281,10 @@ export function CasesTable({ cases, dcas }: CasesTableProps) {
         </Table>
       </div>
       <div className="flex items-center justify-end space-x-2 p-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          Page {table.getState().pagination.pageIndex + 1} of{' '}
+          {table.getPageCount()}
+        </div>
         <Button
           variant="outline"
           size="sm"
