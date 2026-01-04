@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
@@ -35,6 +35,10 @@ export default function SignupPage() {
 
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!firestore) {
+        setError("Firestore is not initialized. Please try again later.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -51,9 +55,12 @@ export default function SignupPage() {
         const userRole = isDcaAgent ? 'DCA_Agent' : 'Admin';
         const dcaId = isDcaAgent ? 'dca-2' : null; // Assign to 'Credit Solutions' for demo
 
-        // Create a user document in Firestore
-        await setDoc(doc(firestore, "users", user.uid), {
-            id: user.uid, // Add this line to satisfy the security rule
+        // Use a batch write to create user doc and admin role doc atomically
+        const batch = writeBatch(firestore);
+
+        const userDocRef = doc(firestore, "users", user.uid);
+        batch.set(userDocRef, {
+            id: user.uid,
             uid: user.uid,
             email: user.email,
             displayName: displayName,
@@ -61,6 +68,14 @@ export default function SignupPage() {
             dcaId: dcaId,
             photoURL: user.photoURL
         });
+
+        // CRITICAL FIX: If the user is an Admin, create the corresponding document in /roles_admin
+        if (userRole === 'Admin') {
+            const adminRoleRef = doc(firestore, "roles_admin", user.uid);
+            batch.set(adminRoleRef, { role: 'Admin', createdAt: new Date() });
+        }
+
+        await batch.commit();
 
         toast({
             title: "Signup Successful",
