@@ -8,6 +8,7 @@ import {
   Home,
   Settings,
   ShieldCheck,
+  Upload,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -44,6 +45,7 @@ export function SidebarNav() {
     { href: '/cases', label: 'All Cases', icon: FileText },
     { href: '/dca', label: 'DCA Portal', icon: ShieldCheck },
     { href: '/reports', label: 'Reports', icon: BarChart3 },
+    { href: '/import', label: 'Import Data', icon: Upload },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
