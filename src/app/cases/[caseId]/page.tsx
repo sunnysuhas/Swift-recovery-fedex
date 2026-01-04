@@ -22,11 +22,12 @@ import {
 import { CaseTimeline } from '@/components/cases/case-timeline';
 import { ExplainPriorityAction } from '@/components/cases/explain-priority-action';
 import { GeneratePlanAction } from '@/components/cases/generate-plan-action';
-import { Button } from '@/components/ui/button';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import { Case, DCA, AuditLog } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UpdateStatusAction } from '@/components/cases/update-status-action';
+import { Button } from '@/components/ui/button';
 
 export default function CaseDetailPage() {
   const params = useParams();
@@ -48,7 +49,7 @@ export default function CaseDetailPage() {
   const { data: dca, isLoading: dcaLoading } = useDoc<DCA>(dcaRef);
 
   const auditLogsQuery = useMemoFirebase(
-    () => (firestore && caseId && user ? query(collection(firestore, 'auditLogs'), where('caseId', '==', caseId)) : null),
+    () => (firestore && caseId && user ? query(collection(firestore, 'auditLogs'), where('caseId', '==', caseId), orderBy('timestamp', 'desc')) : null),
     [firestore, caseId, user]
   );
   const { data: auditLogs, isLoading: auditLoading } = useCollection<AuditLog>(auditLogsQuery);
@@ -178,7 +179,7 @@ export default function CaseDetailPage() {
               <CardTitle>Manual Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-                <Button className='w-full justify-start' variant="outline">Update Status</Button>
+                <UpdateStatusAction caseId={caseItem.id} currentStatus={caseItem.status} />
                 <Button className='w-full justify-start' variant="outline">Log Communication</Button>
                 <Button className='w-full justify-start' variant="outline">Assign to DCA</Button>
                 <Button className='w-full justify-start' variant="destructive">Escalate Case</Button>

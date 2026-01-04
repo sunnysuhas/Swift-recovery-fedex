@@ -2,7 +2,7 @@
 
 import { CasesTable } from '@/components/cases/cases-table';
 import { KpiCard } from '@/components/dashboard/kpi-card';
-import { DollarSign, FileText, TrendingUp, Users } from 'lucide-react';
+import { DollarSign, FileText, TrendingUp, Users, AlertTriangle } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -12,27 +12,45 @@ import {
 } from '@/components/ui/card';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
-import { Case, DCA } from '@/lib/types';
+import { Case, DCA, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DcaPortalPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  
-  // In a real app, we'd get the logged-in DCA's ID from the user object.
-  // For now, we'll continue to mock it for demonstration.
-  const myDcaId = 'dca-2';
 
-  const myDcaRef = useMemoFirebase(() => (firestore && myDcaId && user ? doc(firestore, 'dcas', myDcaId) : null), [firestore, myDcaId, user]);
+  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+  const myDcaId = userProfile?.dcaId;
+
+  const myDcaRef = useMemoFirebase(() => (firestore && myDcaId ? doc(firestore, 'dcas', myDcaId) : null), [firestore, myDcaId]);
   const { data: myDca, isLoading: dcaLoading } = useDoc<DCA>(myDcaRef);
 
-  const myCasesQuery = useMemoFirebase(() => (firestore && user ? query(collection(firestore, 'cases'), where('assignedDCA', '==', myDcaId)) : null), [firestore, myDcaId, user]);
+  const myCasesQuery = useMemoFirebase(
+    () => (firestore && user && myDcaId ? query(collection(firestore, 'cases'), where('assignedDCA', '==', myDcaId)) : null), 
+    [firestore, user, myDcaId]
+  );
   const { data: myCases, isLoading: casesLoading } = useCollection<Case>(myCasesQuery);
 
   const allDcasQuery = useMemoFirebase(() => (firestore && user ? collection(firestore, 'dcas') : null), [firestore, user]);
   const { data: allDcas, isLoading: allDcasLoading } = useCollection<DCA>(allDcasQuery);
   
-  const isLoading = dcaLoading || casesLoading || allDcasLoading;
+  const isLoading = dcaLoading || casesLoading || allDcasLoading || !userProfile;
+
+  if (userProfile && userProfile.role !== 'DCA_Agent') {
+    return (
+        <div className="flex-1 p-4 md:p-6 space-y-6 flex items-center justify-center">
+            <Card className='w-full max-w-md'>
+                <CardHeader className='items-center text-center'>
+                    <AlertTriangle className='w-12 h-12 text-destructive' />
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>This portal is for DCA Agents only. Your role is: {userProfile.role}</CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
+    )
+  }
 
   const atRiskCasesCount = myCases?.filter(c => c.slaStatus === 'At Risk' || c.slaStatus === 'Breached').length || 0;
   const totalDebt = myCases?.reduce((sum, c) => sum + c.amount, 0) || 0;
@@ -40,7 +58,7 @@ export default function DcaPortalPage() {
   return (
     <div className="flex-1 p-4 md:p-6 space-y-6">
        <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">{myDca?.name || 'DCA'} Portal</h2>
+        <h2 className="text-3xl font-bold tracking-tight">{isLoading ? <Skeleton className="h-8 w-48" /> : `${myDca?.name || 'DCA'} Portal`}</h2>
       </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <KpiCard

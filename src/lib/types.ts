@@ -29,6 +29,7 @@ export interface Case {
   lastCommunication: string;
   paymentBehavior: string;
   caseHistory: string;
+  actionPlan?: string;
 }
 
 export interface DCA {
@@ -42,8 +43,10 @@ export interface DCA {
 
 export interface AuditLog {
   id: string;
+  caseId: string;
   timestamp: Timestamp;
   user: string;
+  userId: string;
   action: string;
   details: string;
 }
@@ -61,4 +64,13 @@ export interface AgingDataPoint {
 export interface DcaPerformanceDataPoint {
   name: string;
   'Recovery Rate': number;
+}
+
+export interface UserProfile {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL?: string;
+    role: 'Admin' | 'DCA_Agent';
+    dcaId?: string; // Which DCA the user belongs to
 }

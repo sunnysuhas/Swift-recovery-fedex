@@ -1,8 +1,9 @@
 'use client';
-import { writeBatch, doc, Firestore } from 'firebase/firestore';
+import { writeBatch, doc, Firestore, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { Case, DCA } from '@/lib/types';
+import { Case, DCA, AuditLog } from '@/lib/types';
+import { User } from 'firebase/auth';
 
 function parseCase(data: any): Omit<Case, 'id'> {
   const debtorName = data.debtorName || data.debtor_name || data['Debtor Name'] || data.debtor;
@@ -78,4 +79,66 @@ export function batchWriteDcas(db: Firestore, data: any[]) {
     );
     throw error;
   });
+}
+
+export function updateCaseStatus(db: Firestore, caseId: string, newStatus: Case['status'], user: User) {
+    const caseRef = doc(db, 'cases', caseId);
+    const auditLogRef = doc(db, 'auditLogs', `log-${Date.now()}`);
+    const batch = writeBatch(db);
+
+    batch.update(caseRef, { status: newStatus });
+    
+    batch.set(auditLogRef, {
+      id: auditLogRef.id,
+      caseId: caseId,
+      timestamp: serverTimestamp(),
+      user: user.displayName || user.email,
+      userId: user.uid,
+      action: 'Status Updated',
+      details: `Status changed to ${newStatus}`
+    });
+
+    return batch.commit().catch((error) => {
+      console.error('Update status error:', error);
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: `/cases/${caseId}`,
+          operation: 'update',
+          requestResourceData: { status: newStatus },
+        })
+      );
+      throw error;
+    });
+}
+
+export function saveActionPlan(db: Firestore, caseId: string, actionPlan: string, user: User) {
+    const caseRef = doc(db, 'cases', caseId);
+    const auditLogRef = doc(db, 'auditLogs', `log-${Date.now()}`);
+    const batch = writeBatch(db);
+
+    batch.update(caseRef, { actionPlan });
+    
+    batch.set(auditLogRef, {
+      id: auditLogRef.id,
+      caseId: caseId,
+      timestamp: serverTimestamp(),
+      user: user.displayName || user.email,
+      userId: user.uid,
+      action: 'Action Plan Saved',
+      details: 'AI-generated action plan was saved to the case.'
+    });
+
+    return batch.commit().catch((error) => {
+      console.error('Save action plan error:', error);
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: `/cases/${caseId}`,
+          operation: 'update',
+          requestResourceData: { actionPlan: actionPlan.substring(0, 100) + '...' },
+        })
+      );
+      throw error;
+    });
 }

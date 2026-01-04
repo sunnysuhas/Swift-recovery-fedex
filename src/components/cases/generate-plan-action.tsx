@@ -1,18 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { BotMessageSquare, FileText } from 'lucide-react';
+import { BotMessageSquare, FileText, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import { generateCaseActionPlan } from '@/ai/flows/generate-case-action-plan';
 import type { Case, DCA } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
+import { useFirebase } from '@/firebase';
+import { saveActionPlan } from '@/firebase/firestore/batch-writes';
+import { useToast } from '@/hooks/use-toast';
 
 type GeneratePlanActionProps = {
   caseItem: Case;
@@ -22,7 +26,10 @@ type GeneratePlanActionProps = {
 export function GeneratePlanAction({ caseItem, dca }: GeneratePlanActionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [actionPlan, setActionPlan] = useState('');
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
 
   const handleGeneratePlan = async () => {
     setIsOpen(true);
@@ -54,6 +61,27 @@ export function GeneratePlanAction({ caseItem, dca }: GeneratePlanActionProps) {
     }
   };
 
+  const handleSavePlan = async () => {
+    if (!firestore || !user || !actionPlan) return;
+    setIsSaving(true);
+    try {
+      await saveActionPlan(firestore, caseItem.id, actionPlan, user);
+      toast({
+        title: 'Action Plan Saved',
+        description: 'The AI-generated plan has been added to the case history.',
+      });
+      setIsOpen(false);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Could not save the action plan. Please try again.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <>
       <Button
@@ -74,17 +102,23 @@ export function GeneratePlanAction({ caseItem, dca }: GeneratePlanActionProps) {
               A recommended strategy for case {caseItem.id}.
             </SheetDescription>
           </SheetHeader>
-          <ScrollArea className="h-[calc(100%-8rem)] mt-4 pr-4">
+          <ScrollArea className="h-[calc(100%-12rem)] mt-4 pr-4">
             <div className="p-4 bg-muted/50 rounded-lg min-h-[200px] whitespace-pre-wrap font-sans">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-sm text-muted-foreground animate-pulse">Generating plan...</p>
                 </div>
               ) : (
-                <p className="text-sm">{actionPlan}</p>
+                <p className="text-sm">{actionPlan || caseItem.actionPlan}</p>
               )}
             </div>
           </ScrollArea>
+          <SheetFooter className='pt-4'>
+            <Button onClick={handleSavePlan} disabled={isSaving || isLoading || !actionPlan}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save Plan
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </>

@@ -37,12 +37,18 @@ export async function signup(email: string, password: string, displayName: strin
             displayName,
         });
 
+        // This is a hack for the demo. In a real app, dcaId would be set through a proper admin/invite flow.
+        const isDcaAgent = email.includes('dca');
+        const userRole = isDcaAgent ? 'DCA_Agent' : 'Admin';
+        const dcaId = isDcaAgent ? 'dca-2' : undefined; // Assign to 'Credit Solutions' for demo
+
         // Create a user document in Firestore
         await firestore.collection('users').doc(userRecord.uid).set({
             uid: userRecord.uid,
             email: userRecord.email,
             displayName: userRecord.displayName,
-            role: 'dca_agent', // Assign a default role
+            role: userRole,
+            dcaId: dcaId
         });
 
         return { success: true, uid: userRecord.uid };
