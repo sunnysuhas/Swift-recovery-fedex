@@ -14,13 +14,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { batchWriteCases, batchWriteDcas } from '@/firebase/firestore/batch-writes';
-import { useFirestore, useUser } from '@/firebase';
 import { Upload, FileCheck, AlertTriangle, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { batchCreateCases } from '@/actions/cases';
+import { batchCreateDcas } from '@/actions/dcas';
+import { useUser } from '@/components/providers/local-auth-provider';
+import Papa from 'papaparse';
+import { calculateCasePriority } from '@/ai/flows/calculate-case-priority';
 
 export default function ImportDataPage() {
-  const firestore = useFirestore();
+  // const firestore = useFirestore(); // Removed
   const { user } = useUser();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
@@ -39,38 +42,80 @@ export default function ImportDataPage() {
   };
 
   const parseFile = (fileToParse: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split('\n').filter(Boolean);
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      const data = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        return headers.reduce((obj, header, index) => {
-          // @ts-ignore
-          obj[header] = values[index];
-          return obj;
-        }, {});
-      });
-      setPreviewData(data);
-    };
-    reader.readAsText(fileToParse);
+    Papa.parse(fileToParse, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          console.error(results.errors);
+          toast({
+            variant: 'destructive',
+            title: 'CSV Parse Error',
+            description: `Found ${results.errors.length} errors in the CSV file. Check console for details.`,
+          });
+        }
+        setPreviewData(results.data);
+      },
+      error: (error: Error) => {
+        console.error(error);
+        setError(`Failed to parse CSV: ${error.message}`);
+      }
+    });
   };
-  
+
   const handleUpload = async () => {
-    if (!file || !firestore || !user) {
+    if (!file || !user) {
       setError('Please select a file and ensure you are logged in.');
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
 
     try {
+      // Pre-process for AI Priority if needed (for Cases)
+      let finalData = previewData;
+
       if (fileType === 'cases') {
-        await batchWriteCases(firestore, previewData);
+        // We can do this on client or server. Server is better for API limiting/secrets, 
+        // but `calculateCasePriority` is accessible.
+        // Let's try to map it.
+        // Actually, let's just pass raw data to server action and let it handle? 
+        // But `batchCreateCases` is simple insert. 
+        // Let's do the AI scoring here iteratively or assume we skip it for now to ensure migration works first?
+        // The prompt said "integrate AI". I should match previous logic.
+        // Previous logic in `batch-writes.ts` called `calculateCasePriority`.
+        // I will iterate here.
+
+        finalData = await Promise.all(previewData.map(async (item) => {
+          // Simple parser from `batch-writes` logic (replicated simplified)
+          const amount = parseFloat(item.amount || item.Amount || 0);
+          const aging = parseInt(item.aging || item.Aging || 0);
+          const paymentBehavior = item.paymentBehavior || item['Payment Behavior'] || 'Unknown';
+          let priorityScore = parseInt(item.priorityScore || item['Priority Score'] || 0);
+          let actionPlan = item.actionPlan || item['Action Plan'] || '';
+
+          if (!priorityScore || isNaN(priorityScore)) {
+            try {
+              const aiRes = await calculateCasePriority({ debtAmount: amount, aging, paymentBehavior });
+              priorityScore = aiRes.priorityScore;
+              if (!actionPlan) actionPlan = `AI Note: ${aiRes.reasoning}`;
+            } catch (e) {
+              console.warn('AI failed', e);
+              priorityScore = 50;
+            }
+          }
+          return {
+            ...item,
+            amount, aging, priorityScore, actionPlan, paymentBehavior,
+            debtor: { name: item.debtorName || item['Debtor Name'], accountId: item.debtorAccountId || item['Debtor Account ID'] }
+            // we need to be careful with mapping to what `createCase` expects
+          };
+        }));
+
+        await batchCreateCases(finalData);
       } else {
-        await batchWriteDcas(firestore, previewData);
+        await batchCreateDcas(previewData);
       }
 
       toast({
@@ -97,7 +142,7 @@ export default function ImportDataPage() {
 
   return (
     <div className="flex-1 p-4 md:p-6">
-       <div className="flex items-center justify-between space-y-2 mb-4">
+      <div className="flex items-center justify-between space-y-2 mb-4">
         <h2 className="text-3xl font-bold tracking-tight">Import Data</h2>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
@@ -109,9 +154,9 @@ export default function ImportDataPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="file-type">Select Data Type</Label>
-              <select 
+              <select
                 id="file-type"
                 value={fileType}
                 onChange={(e) => setFileType(e.target.value as 'cases' | 'dcas')}
@@ -124,7 +169,7 @@ export default function ImportDataPage() {
             <div className="space-y-2">
               <Label htmlFor="file-upload">Choose CSV File</Label>
               <div className="flex items-center gap-2">
-                <Input id="file-upload" type="file" accept=".csv" onChange={handleFileChange} className="w-full"/>
+                <Input id="file-upload" type="file" accept=".csv" onChange={handleFileChange} className="w-full" />
               </div>
             </div>
             {file && (

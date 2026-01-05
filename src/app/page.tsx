@@ -7,35 +7,33 @@ import { AgingChart } from '@/components/dashboard/aging-chart';
 import { DcaPerformanceChart } from '@/components/dashboard/dca-performance-chart';
 import { PriorityCasesTable } from '@/components/dashboard/priority-cases-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { getCases } from '@/actions/cases';
+import { useUser } from '@/components/providers/local-auth-provider';
 import { Case, RecoveryDataPoint, AgingDataPoint, DcaPerformanceDataPoint } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
 
 export default function DashboardPage() {
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, loading: isUserLoading } = useUser();
+  const [cases, setCases] = useState<Case[] | null>(null);
+  const [casesLoading, setCasesLoading] = useState(true);
 
-  const casesQuery = useMemoFirebase(
-    () => (firestore && user ? collection(firestore, 'cases') : null),
-    [firestore, user]
-  );
-  const { data: cases, isLoading: casesLoading } = useCollection<Case>(casesQuery);
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await getCases();
+        setCases(data as unknown as Case[]); // Ensure type compatibility
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setCasesLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
-  const priorityCasesQuery = useMemoFirebase(
-    () =>
-      firestore && user
-        ? query(
-            collection(firestore, 'cases'),
-            where('priorityScore', '>', 90),
-            orderBy('priorityScore', 'desc'),
-            limit(10)
-          )
-        : null,
-    [firestore, user]
-  );
-  const { data: priorityCases, isLoading: priorityCasesLoading } =
-    useCollection<Case>(priorityCasesQuery);
+  const priorityCases = cases ? cases.filter(c => c.priorityScore && c.priorityScore > 90).sort((a, b) => b.priorityScore - a.priorityScore).slice(0, 10) : [];
+  const priorityCasesLoading = casesLoading;
 
   // Mocked data for charts as we don't have historical/aggregated collections yet
   const recoveryData: RecoveryDataPoint[] = [
@@ -61,7 +59,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
-       <div className="flex items-center justify-between space-y-2">
+      <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

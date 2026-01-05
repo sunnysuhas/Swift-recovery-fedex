@@ -1,4 +1,4 @@
-import { type Timestamp } from 'firebase/firestore';
+// import { type Timestamp } from 'firebase/firestore'; // Removed
 
 export type CaseStatus =
   | 'New'
@@ -44,7 +44,7 @@ export interface DCA {
 export interface AuditLog {
   id: string;
   caseId: string;
-  timestamp: Timestamp;
+  timestamp: Date;
   user: string;
   userId: string;
   action: string;
@@ -67,10 +67,10 @@ export interface DcaPerformanceDataPoint {
 }
 
 export interface UserProfile {
-    uid: string;
-    email: string | null;
-    displayName: string | null;
-    photoURL?: string;
-    role: 'Admin' | 'DCA_Agent';
-    dcaId?: string; // Which DCA the user belongs to
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string;
+  role: 'Admin' | 'DCA_Agent';
+  dcaId?: string; // Which DCA the user belongs to
 }

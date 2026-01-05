@@ -32,8 +32,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { getCases } from '@/actions/cases';
+import Papa from 'papaparse';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+
+// ... imports
+
 export default function ReportsPage() {
-  // Mocked data for charts as we don't have historical/aggregated collections yet
+  /* ... */
+  const { toast } = useToast(); // Restore useToast
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Restore Mock Data
   const recoveryData: RecoveryDataPoint[] = [
     { month: 'Jan', rate: 65 }, { month: 'Feb', rate: 68 }, { month: 'Mar', rate: 70 },
     { month: 'Apr', rate: 72 }, { month: 'May', rate: 69 }, { month: 'Jun', rate: 71 },
@@ -44,115 +55,163 @@ export default function ReportsPage() {
     { range: '>120 Days', value: 800000 },
   ];
   const dcaPerformance: DcaPerformanceDataPoint[] = [
-      { name: 'Global Recovery', 'Recovery Rate': 78 },
-      { name: 'Credit Solutions', 'Recovery Rate': 85 },
-      { name: 'Apex Financial', 'Recovery Rate': 72 },
-      { name: 'National Debt', 'Recovery Rate': 65 },
+    { name: 'Global Recovery', 'Recovery Rate': 78 },
+    { name: 'Credit Solutions', 'Recovery Rate': 85 },
+    { name: 'Apex Financial', 'Recovery Rate': 72 },
+    { name: 'National Debt', 'Recovery Rate': 65 },
   ];
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      // Fetch cases using Server Action
+      const data = await getCases();
+
+      if (data.length === 0) {
+        toast({
+          title: 'No Data',
+          description: 'No cases found to export.',
+        });
+        setIsDownloading(false);
+        return;
+      }
+
+      // Flatten nested objects (like debtor) for CSV
+      const flattenedData = data.map((item: any) => ({
+        ...item,
+        debtorName: item.debtor?.name || item.debtorName,
+        debtorAccountId: item.debtor?.accountId || item.debtorAccountId,
+        debtor: undefined // remove object
+      }));
+
+      const csv = Papa.unparse(flattenedData);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'cases_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: 'Export Successful',
+        description: 'Case data has been downloaded.',
+      });
+
+    } catch (error) {
+      console.error('Export failed', error);
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: 'Could not export data.',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
 
   return (
     <div className="flex-1 p-4 md:p-6 space-y-6">
-        <div className="flex items-center justify-between space-y-2">
-            <h2 className="text-3xl font-bold tracking-tight">Reporting & Analytics</h2>
-        </div>
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <div>
-              <CardTitle>Generate Reports</CardTitle>
-              <CardDescription>
-                Download detailed reports for offline analysis.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-4">
-              <Select defaultValue="monthly-summary">
-                <SelectTrigger className="w-[240px]">
-                  <SelectValue placeholder="Select a report" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly-summary">
-                    Monthly Recovery Summary
-                  </SelectItem>
-                  <SelectItem value="dca-performance">
-                    DCA Performance Review
-                  </SelectItem>
-                  <SelectItem value="aging-analysis">
-                    Detailed Aging Analysis
-                  </SelectItem>
-                  <SelectItem value="full-case-export">
-                    Full Case Export (CSV)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Button>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Reporting & Analytics</h2>
+      </div>
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <div>
+            <CardTitle>Generate Reports</CardTitle>
+            <CardDescription>
+              Download detailed reports for offline analysis.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-4">
+            <Select defaultValue="full-case-export">
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder="Select a report" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly-summary">
+                  Monthly Recovery Summary (PDF)
+                </SelectItem>
+                <SelectItem value="full-case-export">
+                  Full Case Export (CSV)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={handleDownload} disabled={isDownloading}>
+              <Download className="mr-2 h-4 w-4" />
+              {isDownloading ? 'Downloading...' : 'Download Cases'}
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            title="Avg. Time to Recovery"
-            value="82 days"
-            change="-5% from last month"
-            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KpiCard
-            title="Total Recovered (QTD)"
-            value="$451,234"
-            change="Quarter-to-date"
-            icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KpiCard
-            title="Top Performing DCA"
-            value="Credit Solutions"
-            change="85% recovery rate"
-            icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KpiCard
-            title="Cases Closed (Month)"
-            value="215"
-            change="+15 from last month"
-            icon={<FileText className="h-4 w-4 text-muted-foreground" />}
-          />
-        </div>
+      {/* ... rest of the charts */}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recovery Rate Over Time</CardTitle>
-              <CardDescription>
-                Monthly recovery rate across all agencies.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RecoveryRateChart data={recoveryData} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Case Aging Distribution</CardTitle>
-              <CardDescription>
-                Total debt value by aging bucket.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AgingChart data={agingData} />
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title="Avg. Time to Recovery"
+          value="82 days"
+          change="-5% from last month"
+          icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+        />
+        <KpiCard
+          title="Total Recovered (QTD)"
+          value="$451,234"
+          change="Quarter-to-date"
+          icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+        />
+        <KpiCard
+          title="Top Performing DCA"
+          value="Credit Solutions"
+          change="85% recovery rate"
+          icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+        />
+        <KpiCard
+          title="Cases Closed (Month)"
+          value="215"
+          change="+15 from last month"
+          icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>DCA Performance Leaderboard</CardTitle>
+            <CardTitle>Recovery Rate Over Time</CardTitle>
             <CardDescription>
-              Comparing recovery rates of all active DCAs.
+              Monthly recovery rate across all agencies.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DcaPerformanceChart data={dcaPerformance} />
+            <RecoveryRateChart data={recoveryData} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Case Aging Distribution</CardTitle>
+            <CardDescription>
+              Total debt value by aging bucket.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AgingChart data={agingData} />
           </CardContent>
         </Card>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>DCA Performance Leaderboard</CardTitle>
+          <CardDescription>
+            Comparing recovery rates of all active DCAs.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DcaPerformanceChart data={dcaPerformance} />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

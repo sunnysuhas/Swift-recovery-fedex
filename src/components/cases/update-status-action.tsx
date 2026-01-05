@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,11 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useFirebase } from '@/firebase';
-import { updateCaseStatus } from '@/firebase/firestore/batch-writes';
+import { useUser } from '@/components/providers/local-auth-provider';
+import { updateCase } from '@/actions/cases';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import type { Case, CaseStatus } from '@/lib/types';
+import type { CaseStatus } from '@/lib/types';
 
 type UpdateStatusActionProps = {
   caseId: string;
@@ -44,22 +42,28 @@ export function UpdateStatusAction({ caseId, currentStatus }: UpdateStatusAction
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<CaseStatus>(currentStatus);
-  const { firestore, user } = useFirebase();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleUpdate = async () => {
-    if (!firestore || !user || selectedStatus === currentStatus) {
+    if (!user || selectedStatus === currentStatus) {
       setIsOpen(false);
+      // If not logged in we shouldn't even see the button ideally, but for safety:
+      if (!user) {
+        toast({ title: 'Error', description: 'Must be logged in.', variant: 'destructive' });
+      }
       return;
     }
     setIsSaving(true);
     try {
-      await updateCaseStatus(firestore, caseId, selectedStatus, user);
+      await updateCase(caseId, { status: selectedStatus });
       toast({
         title: 'Status Updated',
         description: `Case ${caseId} status changed to ${selectedStatus}.`,
       });
       setIsOpen(false);
+      // In a real app we might revalidate path or router.refresh() here.
+      window.location.reload(); // Simple refresh for now
     } catch (error) {
       toast({
         variant: 'destructive',

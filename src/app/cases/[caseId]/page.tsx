@@ -22,39 +22,55 @@ import {
 import { CaseTimeline } from '@/components/cases/case-timeline';
 import { ExplainPriorityAction } from '@/components/cases/explain-priority-action';
 import { GeneratePlanAction } from '@/components/cases/generate-plan-action';
-import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import { Case, DCA, AuditLog } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UpdateStatusAction } from '@/components/cases/update-status-action';
 import { Button } from '@/components/ui/button';
+import { getCase } from '@/actions/cases';
+import { getDcas } from '@/actions/dcas';
+import { getAuditLogs } from '@/actions/audit-logs';
+import { useUser } from '@/components/providers/local-auth-provider';
+import { useEffect, useState } from 'react';
 
 export default function CaseDetailPage() {
   const params = useParams();
   const caseId = params.caseId as string;
-  const firestore = useFirestore();
   const { user } = useUser();
 
-  const caseRef = useMemoFirebase(
-    () => (firestore && caseId && user ? doc(firestore, 'cases', caseId) : null),
-    [firestore, caseId, user]
-  );
-  const { data: caseItem, isLoading: caseLoading } = useDoc<Case>(caseRef);
+  const [caseItem, setCaseItem] = useState<Case | null>(null);
+  const [dca, setDca] = useState<DCA | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const dcaId = caseItem?.assignedDCA;
-  const dcaRef = useMemoFirebase(
-    () => (firestore && dcaId && user ? doc(firestore, 'dcas', dcaId) : null),
-    [firestore, dcaId, user]
-  );
-  const { data: dca, isLoading: dcaLoading } = useDoc<DCA>(dcaRef);
+  useEffect(() => {
+    async function fetchData() {
+      if (!user || !caseId) return;
+      try {
+        const [caseData, logsData, dcasData] = await Promise.all([
+          getCase(caseId),
+          getAuditLogs(caseId),
+          getDcas()
+        ]);
 
-  const auditLogsQuery = useMemoFirebase(
-    () => (firestore && caseId && user ? query(collection(firestore, 'auditLogs'), where('caseId', '==', caseId), orderBy('timestamp', 'desc')) : null),
-    [firestore, caseId, user]
-  );
-  const { data: auditLogs, isLoading: auditLoading } = useCollection<AuditLog>(auditLogsQuery);
+        const c = caseData as unknown as Case;
+        setCaseItem(c);
+        setAuditLogs(logsData as unknown as AuditLog[]);
 
-  const isLoading = caseLoading || dcaLoading || auditLoading;
+        if (c && c.assignedDCA) {
+          const dcaFound = (dcasData as any[]).find(d => d.id === c.assignedDCA);
+          setDca(dcaFound as unknown as DCA);
+        }
+
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, [user, caseId]);
+
+  // const isLoading = caseLoading || dcaLoading || auditLoading; // Removed
 
   if (isLoading) {
     return <CaseDetailSkeleton />;
@@ -71,13 +87,13 @@ export default function CaseDetailPage() {
       default: return 'secondary';
     }
   };
-  
+
   const getSlaBadgeVariant = (status: string) => {
     switch (status) {
-        case 'On Track': return 'default';
-        case 'At Risk': return 'secondary';
-        case 'Breached': return 'destructive';
-        default: return 'outline';
+      case 'On Track': return 'default';
+      case 'At Risk': return 'secondary';
+      case 'Breached': return 'destructive';
+      default: return 'outline';
     }
   };
 
@@ -170,8 +186,8 @@ export default function CaseDetailPage() {
               <CardDescription>Intelligent actions and insights</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ExplainPriorityAction caseItem={caseItem} dca={dca} />
-              <GeneratePlanAction caseItem={caseItem} dca={dca} />
+              <ExplainPriorityAction caseItem={caseItem} dca={dca || undefined} />
+              <GeneratePlanAction caseItem={caseItem} dca={dca || undefined} />
             </CardContent>
           </Card>
           <Card>
@@ -179,10 +195,10 @@ export default function CaseDetailPage() {
               <CardTitle>Manual Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-                <UpdateStatusAction caseId={caseItem.id} currentStatus={caseItem.status} />
-                <Button className='w-full justify-start' variant="outline">Log Communication</Button>
-                <Button className='w-full justify-start' variant="outline">Assign to DCA</Button>
-                <Button className='w-full justify-start' variant="destructive">Escalate Case</Button>
+              <UpdateStatusAction caseId={caseItem.id} currentStatus={caseItem.status} />
+              <Button className='w-full justify-start' variant="outline">Log Communication</Button>
+              <Button className='w-full justify-start' variant="outline">Assign to DCA</Button>
+              <Button className='w-full justify-start' variant="destructive">Escalate Case</Button>
             </CardContent>
           </Card>
         </div>
@@ -214,8 +230,8 @@ function InfoItem({
 function CaseDetailSkeleton() {
   return (
     <main className="flex-1 p-4 md:p-6">
-       <div className="flex items-center justify-between space-y-2 mb-4">
-         <Skeleton className="h-8 w-64" />
+      <div className="flex items-center justify-between space-y-2 mb-4">
+        <Skeleton className="h-8 w-64" />
       </div>
       <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
         <div className="md:col-span-2 lg:col-span-3 space-y-6">

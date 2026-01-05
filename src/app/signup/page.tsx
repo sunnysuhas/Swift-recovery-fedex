@@ -13,9 +13,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { useUser } from '@/components/providers/local-auth-provider';
+import { createUser } from '@/actions/users';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
@@ -25,8 +24,7 @@ const ADMIN_EMAILS = ['reddykesava60@gmail.com', 'sunnysuhas108@gmail.com'];
 
 export default function SignupPage() {
   const router = useRouter();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { login } = useUser();
   const { toast } = useToast();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -37,63 +35,42 @@ export default function SignupPage() {
 
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!firestore) {
-        setError("Firestore is not initialized. Please try again later.");
-        return;
-    }
     setIsLoading(true);
     setError(null);
 
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        const displayName = `${firstName} ${lastName}`;
+      const displayName = `${firstName} ${lastName}`;
+      const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+      const isDcaAgent = !isAdmin && email.includes('dca');
+      const userRole = isAdmin ? 'Admin' : (isDcaAgent ? 'DCA_Agent' : 'Admin');
 
-        // Update profile in Firebase Auth
-        await updateProfile(user, { displayName });
-        
-        const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
-        const isDcaAgent = !isAdmin && email.includes('dca'); // Assume non-admin with 'dca' in email is an agent
-        const userRole = isAdmin ? 'Admin' : (isDcaAgent ? 'DCA_Agent' : 'Admin'); // Default to Admin
-        const dcaId = isDcaAgent ? 'dca-2' : null; // Example DCA ID
+      // Create user in SQLite
+      await createUser({
+        email,
+        displayName,
+        role: userRole,
+        // photoURL: ... // handle photo if needed
+      });
 
-        const batch = writeBatch(firestore);
+      // Set local session
+      login(email, userRole as any);
 
-        // 1. Create the main user document
-        const userDocRef = doc(firestore, "users", user.uid);
-        batch.set(userDocRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: displayName,
-            role: userRole,
-            dcaId: dcaId,
-            photoURL: user.photoURL
-        });
-
-        // 2. If the user is an admin, create a corresponding document in roles_admin
-        if (isAdmin) {
-            const adminRoleRef = doc(firestore, "roles_admin", user.uid);
-            batch.set(adminRoleRef, { role: 'Admin', createdAt: serverTimestamp() });
-        }
-
-        await batch.commit();
-
-        toast({
-            title: "Signup Successful",
-            description: "Your account has been created.",
-        });
-        router.push("/");
+      toast({
+        title: "Signup Successful",
+        description: "Your account has been created.",
+      });
+      router.push("/");
 
     } catch (result: any) {
-        const errorMessage = result.message || 'An unknown error occurred.';
-        setError(errorMessage);
-        toast({
-            variant: "destructive",
-            title: "Signup Failed",
-            description: errorMessage,
-        });
+      const errorMessage = result.message || 'An unknown error occurred.';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Signup Failed",
+        description: errorMessage,
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -101,10 +78,10 @@ export default function SignupPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader className="text-center">
-            <div className="flex justify-center items-center gap-2 mb-4">
-                <Logo className="h-8 w-8" />
-                <CardTitle className="text-2xl">RecoveryAI</CardTitle>
-            </div>
+          <div className="flex justify-center items-center gap-2 mb-4">
+            <Logo className="h-8 w-8" />
+            <CardTitle className="text-2xl">RecoveryAI</CardTitle>
+          </div>
           <CardDescription>
             Enter your information to create an account
           </CardDescription>
@@ -114,24 +91,24 @@ export default function SignupPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="first-name">First name</Label>
-                <Input 
-                    id="first-name" 
-                    placeholder="Max" 
-                    required 
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={isLoading}
+                <Input
+                  id="first-name"
+                  placeholder="Max"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="last-name">Last name</Label>
-                <Input 
-                    id="last-name" 
-                    placeholder="Robinson" 
-                    required 
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    disabled={isLoading}
+                <Input
+                  id="last-name"
+                  placeholder="Robinson"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -149,20 +126,20 @@ export default function SignupPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
               />
             </div>
             {error && (
-                <Alert variant="destructive">
-                    <AlertTitle>Signup Error</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
+              <Alert variant="destructive">
+                <AlertTitle>Signup Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

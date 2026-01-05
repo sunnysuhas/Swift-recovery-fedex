@@ -20,7 +20,7 @@ export function CaseTimeline({ logs, caseHistory }: CaseTimelineProps) {
     };
   });
 
-  const allItems = [...logs.map(l => ({...l, timestamp: l.timestamp.toDate()})), ...historyItems]
+  const allItems = [...logs.map(l => ({ ...l, timestamp: new Date(l.timestamp) })), ...historyItems]
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   return (

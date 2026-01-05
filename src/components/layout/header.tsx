@@ -16,11 +16,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useUser, useAuth } from '@/firebase';
+import { useUser } from '@/components/providers/local-auth-provider';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
-import { signOut } from 'firebase/auth';
 import React from 'react';
 
 
@@ -36,14 +35,13 @@ const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-1');
 
 export default function AppHeader() {
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+  const { user, loading: isUserLoading, logout } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchValue, setSearchValue] = React.useState(searchParams.get('q') || '');
 
-  const handleLogout = async () => {
-    await signOut(auth);
+  const handleLogout = () => {
+    logout();
     router.push('/login');
   };
 
@@ -85,16 +83,16 @@ export default function AppHeader() {
       </nav>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <form onSubmit={handleSearch} className="ml-auto flex-1 sm:flex-initial">
-            <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                type="search"
-                placeholder="Search cases by debtor..."
-                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                />
-            </div>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search cases by debtor..."
+              className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+            />
+          </div>
         </form>
         <ThemeToggle />
         <DropdownMenu>
@@ -139,7 +137,9 @@ export default function AppHeader() {
             <DropdownMenuItem asChild>
               <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/support">Support</Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>

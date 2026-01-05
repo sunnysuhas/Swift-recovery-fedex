@@ -3,8 +3,11 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { LocalAuthProvider } from '@/components/providers/local-auth-provider';
 import AppLayout from '@/components/layout/app-layout';
+import { Outfit } from 'next/font/google';
+
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-body' });
 
 export const metadata: Metadata = {
   title: 'RecoveryAI',
@@ -18,29 +21,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body
         className={cn(
           'min-h-screen bg-background font-body antialiased',
+          outfit.variable,
           process.env.NODE_ENV === 'development' ? 'debug-screens' : ''
         )}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseClientProvider>
+          <LocalAuthProvider>
             <AppLayout>{children}</AppLayout>
-          </FirebaseClientProvider>
+          </LocalAuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

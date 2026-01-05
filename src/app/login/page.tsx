@@ -13,8 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useUser } from '@/components/providers/local-auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import { Loader2 } from 'lucide-react';
@@ -22,7 +21,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const router = useRouter();
-  const auth = useAuth();
+  const { login } = useUser();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +34,11 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Mock login - strictly local
+      // In a real app we would verify password against DB here using a server action
+      // But for hackathon/local-demo we just simulate login
+      login(email);
+
       toast({
         title: 'Login Successful',
         description: 'Welcome back!',
@@ -57,10 +60,10 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader className="text-center">
-            <div className="flex justify-center items-center gap-2 mb-4">
-                <Logo className="h-8 w-8" />
-                <CardTitle className="text-2xl">RecoveryAI</CardTitle>
-            </div>
+          <div className="flex justify-center items-center gap-2 mb-4">
+            <Logo className="h-8 w-8" />
+            <CardTitle className="text-2xl">RecoveryAI</CardTitle>
+          </div>
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>
@@ -83,10 +86,10 @@ export default function LoginPage() {
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
               </div>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}

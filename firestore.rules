@@ -124,7 +124,10 @@ service cloud.firestore {
      */
     match /cases/{caseId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      // Allow any signed-in user to create cases (development convenience).
+      // Keep update/delete restricted to admins.
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     /**

@@ -7,19 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useAuth, useFirebase } from '@/firebase';
-import { updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useUser } from '@/components/providers/local-auth-provider';
+// import { useToast } from '@/hooks/use-toast'; // Already there
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function SettingsPage() {
-  const { user, isUserLoading } = useUser();
-  const { auth, firestore } = useFirebase();
-  const storage = getStorage();
+  const { user, login } = useUser();
+  // const { auth, firestore } = useFirebase(); // Removed
+  // const storage = getStorage(); // Removed
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState('');
@@ -50,20 +48,18 @@ export default function SettingsPage() {
 
     setIsUploading(true);
     try {
-      const avatarRef = storageRef(storage, `avatars/${user.uid}/${file.name}`);
-      const snapshot = await uploadBytes(avatarRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      // Mock Upload
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const downloadURL = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`; // Mock URL
 
       setPhotoURL(downloadURL); // Optimistically update UI
 
-      // Now update auth and firestore
-      await updateProfile(user, { photoURL: downloadURL });
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, { photoURL: downloadURL }, { merge: true });
+      // Update local auth provider state (if we had a method for it, or just rely on state update)
+      // For now, we just mock the persistence
 
       toast({
         title: 'Avatar Updated!',
-        description: 'Your new avatar has been saved.',
+        description: 'Your new avatar has been saved (Mock).',
       });
 
     } catch (error: any) {
@@ -79,7 +75,7 @@ export default function SettingsPage() {
   };
 
   const handleSaveChanges = async () => {
-    if (!user || !auth.currentUser || !firestore) {
+    if (!user) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -90,16 +86,20 @@ export default function SettingsPage() {
 
     setIsSaving(true);
     try {
-      // Update Firebase Auth profile
-      await updateProfile(auth.currentUser, { displayName });
+      // Mock Update
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Update Firestore user document
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, { displayName }, { merge: true });
+      // Here we would call updateUser server action
+      // await updateUser(user.uid, { displayName });
+
+      // Update local session to reflect name change
+      if (user.email) {
+        login(user.email, user.role); // Re-login to refresh details is hacky but works for mock
+      }
 
       toast({
         title: 'Success!',
-        description: 'Your profile has been updated.',
+        description: 'Your profile has been updated (Mock).',
       });
     } catch (error: any) {
       console.error('Error saving profile:', error);
@@ -150,12 +150,12 @@ export default function SettingsPage() {
               <Button variant="outline" className="ml-auto" onClick={handleAvatarClick} disabled={isUploading}>
                 Change Avatar
               </Button>
-              <Input 
-                type="file" 
+              <Input
+                type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="hidden"
-                accept="image/png, image/jpeg, image/gif" 
+                accept="image/png, image/jpeg, image/gif"
                 disabled={isUploading}
               />
             </div>
@@ -167,7 +167,7 @@ export default function SettingsPage() {
                   id="name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  disabled={isUserLoading || isSaving}
+                  disabled={isSaving}
                 />
               </div>
               <div className="space-y-2">

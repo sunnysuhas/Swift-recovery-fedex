@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { BotMessageSquare, FileText, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,8 +12,8 @@ import {
 import { generateCaseActionPlan } from '@/ai/flows/generate-case-action-plan';
 import type { Case, DCA } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
-import { useFirebase } from '@/firebase';
-import { saveActionPlan } from '@/firebase/firestore/batch-writes';
+import { useUser } from '@/components/providers/local-auth-provider';
+import { updateCase } from '@/actions/cases';
 import { useToast } from '@/hooks/use-toast';
 
 type GeneratePlanActionProps = {
@@ -28,13 +26,13 @@ export function GeneratePlanAction({ caseItem, dca }: GeneratePlanActionProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [actionPlan, setActionPlan] = useState('');
-  const { firestore, user } = useFirebase();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleGeneratePlan = async () => {
     setIsOpen(true);
-    if(actionPlan) return; // Don't re-generate if we already have a plan
-    
+    if (actionPlan) return; // Don't re-generate if we already have a plan
+
     setIsLoading(true);
     try {
       const result = await generateCaseActionPlan({
@@ -47,9 +45,9 @@ export function GeneratePlanAction({ caseItem, dca }: GeneratePlanActionProps) {
       const formattedPlan = result.actionPlan
         .split('\n')
         .map(line => {
-            if (line.startsWith('* ')) return `• ${line.substring(2)}`;
-            if (line.match(/^\d+\./)) return `\n${line}`;
-            return line;
+          if (line.startsWith('* ')) return `• ${line.substring(2)}`;
+          if (line.match(/^\d+\./)) return `\n${line}`;
+          return line;
         })
         .join('\n');
       setActionPlan(formattedPlan);
@@ -62,15 +60,16 @@ export function GeneratePlanAction({ caseItem, dca }: GeneratePlanActionProps) {
   };
 
   const handleSavePlan = async () => {
-    if (!firestore || !user || !actionPlan) return;
+    if (!user || !actionPlan) return;
     setIsSaving(true);
     try {
-      await saveActionPlan(firestore, caseItem.id, actionPlan, user);
+      await updateCase(caseItem.id, { actionPlan });
       toast({
         title: 'Action Plan Saved',
         description: 'The AI-generated plan has been added to the case history.',
       });
       setIsOpen(false);
+      window.location.reload();
     } catch (error) {
       toast({
         variant: 'destructive',
