@@ -11,7 +11,11 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "seed": "tsx src/scripts/seed_data.ts",
+    "run:automation": "tsx src/scripts/run_automation.ts",
+    "run:sla": "tsx src/scripts/monitor_sla.ts",
+    "run:e2e": "tsx src/scripts/verify_e2e.ts"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.27.0",
