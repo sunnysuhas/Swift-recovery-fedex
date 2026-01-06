@@ -74,7 +74,7 @@ export default function ImportDataPage() {
 
     try {
       // Pre-process for AI Priority if needed (for Cases)
-      let finalData = previewData;
+      let finalData: any[] = [];
 
       if (fileType === 'cases') {
         // We can do this on client or server. Server is better for API limiting/secrets, 
@@ -87,7 +87,10 @@ export default function ImportDataPage() {
         // Previous logic in `batch-writes.ts` called `calculateCasePriority`.
         // I will iterate here.
 
-        finalData = await Promise.all(previewData.map(async (item) => {
+        const totalItems = previewData.length;
+        let processedCount = 0;
+
+        for (const item of previewData) {
           // Simple parser from `batch-writes` logic (replicated simplified)
           const amount = parseFloat(item.amount || item.Amount || 0);
           const aging = parseInt(item.aging || item.Aging || 0);
@@ -97,23 +100,50 @@ export default function ImportDataPage() {
 
           if (!priorityScore || isNaN(priorityScore)) {
             try {
+              // Rate limiting delay (13s to be safe for 5 RPM limit)
+              if (processedCount > 0) {
+                await new Promise(resolve => setTimeout(resolve, 13000));
+              }
+
               const aiRes = await calculateCasePriority({ debtAmount: amount, aging, paymentBehavior });
               priorityScore = aiRes.priorityScore;
               if (!actionPlan) actionPlan = `AI Note: ${aiRes.reasoning}`;
-            } catch (e) {
+            } catch (e: any) {
               console.warn('AI failed', e);
-              priorityScore = 50;
+              // Check if it's a rate limit error or network timeout
+              if (e.message?.includes('429') || e.status === 429 || e.message?.includes('fetch failed') || e.message?.includes('timeout')) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Rate Limit Hit',
+                  description: 'Pausing for 30s before retrying...',
+                });
+                await new Promise(resolve => setTimeout(resolve, 30000));
+                // Simple retry once
+                try {
+                  const aiRes = await calculateCasePriority({ debtAmount: amount, aging, paymentBehavior });
+                  priorityScore = aiRes.priorityScore;
+                  if (!actionPlan) actionPlan = `AI Note: ${aiRes.reasoning}`;
+                } catch (retryE) {
+                  console.warn('AI retry failed', retryE);
+                  priorityScore = 50;
+                }
+              } else {
+                priorityScore = 50;
+              }
             }
           }
-          return {
+
+          finalData.push({
             ...item,
             amount, aging, priorityScore, actionPlan, paymentBehavior,
             debtor: { name: item.debtorName || item['Debtor Name'], accountId: item.debtorAccountId || item['Debtor Account ID'] }
-            // we need to be careful with mapping to what `createCase` expects
-          };
-        }));
+          });
 
-        await batchCreateCases(finalData);
+          processedCount++;
+          // Optional: Update progress UI if we had one
+        }
+
+        await batchCreateCases(finalData, user.uid); // Pass ownerId
       } else {
         await batchCreateDcas(previewData);
       }

@@ -23,7 +23,7 @@ function CasesPageContent() {
     async function fetchData() {
       if (!user) return;
       try {
-        const [casesData, dcasData] = await Promise.all([getCases(), getDcas()]);
+        const [casesData, dcasData] = await Promise.all([getCases(user.uid, user.role), getDcas()]);
         setAllCases(casesData as unknown as Case[]);
         setDcas(dcasData as unknown as DCA[]);
       } catch (e) {

@@ -36,6 +36,7 @@ export const cases = sqliteTable('cases', {
     paymentBehavior: text('payment_behavior'),
     caseHistory: text('case_history'), // JSON string or text summary
     actionPlan: text('action_plan'),
+    ownerId: text('owner_id'), // User UID who owns this case
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });

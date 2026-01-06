@@ -32,11 +32,25 @@ export default function DcaPortalPage() {
                 const dcasData = await getDcas();
                 setAllDcas(dcasData as unknown as DCA[]);
 
+                // If Admin, they see "My DCA" as null or we pick the first one? 
+                // Requirement: "Admin can see all data". 
+                // But this page "DCA Portal" is specific to ONE DCA view typically.
+                // For now, if Admin, we just show ALL assigned cases or maybe let them pick?
+                // Minimal change: If Admin, get ALL cases (assignments) and show them.
+
                 const myDcaFound = dcasData.find((d: any) => d.id === user.dcaId) || null;
                 setMyDca(myDcaFound as unknown as DCA);
 
-                const casesData = await getCases();
-                const myCasesFound = casesData.filter((c: any) => c.assignedDCA === user.dcaId);
+                const casesData = await getCases(user.uid, user.role, user.dcaId);
+                // Filter client side for extra safety if needed, or rely on server.
+                // If Admin, casesData is ALL cases. 
+                // If DCA agent, casesData is THEIR cases.
+
+                let myCasesFound = casesData;
+                if (user.role !== 'Admin') {
+                    myCasesFound = casesData.filter((c: any) => c.assignedDCA === user.dcaId);
+                }
+
                 setMyCases(myCasesFound as unknown as Case[]);
             } catch (e) {
                 console.error(e);
@@ -49,7 +63,7 @@ export default function DcaPortalPage() {
 
     const userProfile = user;
 
-    if (userProfile && userProfile.role !== 'DCA_Agent') {
+    if (userProfile && userProfile.role !== 'DCA_Agent' && userProfile.role !== 'Admin') {
         return (
             <div className="flex-1 p-4 md:p-6 space-y-6 flex items-center justify-center">
                 <Card className='w-full max-w-md'>

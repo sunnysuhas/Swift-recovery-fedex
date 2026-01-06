@@ -2,15 +2,22 @@
 
 import { db } from '@/lib/db';
 import { cases } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 // import { revalidatePath } from 'next/cache'; // If needed
 
-export async function getCases() {
-    const result = await db.select().from(cases).orderBy(desc(cases.createdAt));
-    // Parse JSON fields if necessary (like debtor if we stored it as string, but sqlite schema has specific columns? 
-    // Wait, in schema I put debtorName/debtorAccountId on root for simplicity but the Type expects nested debtor object.
-    // I should adapt the return type to match Case interface or update the Interface.
-    // Ideally, I'll map it to the Case type.
+export async function getCases(userId?: string, role?: string) {
+    let result;
+
+    // If Admin, fetch all. If DCA_Agent (or other), fetch only owned cases.
+    if (role === 'Admin') {
+        result = await db.select().from(cases).orderBy(desc(cases.createdAt));
+    } else if (userId) {
+        result = await db.select().from(cases).where(eq(cases.ownerId, userId)).orderBy(desc(cases.createdAt));
+    } else {
+        // Fallback for no auth context (shouldn't happen in logic but safe default)
+        return [];
+    }
+
     return result.map(c => ({
         ...c,
         assignedDCA: c.assignedDcaId,
@@ -43,9 +50,7 @@ export async function updateCase(id: string, data: any) {
     return { id, ...data };
 }
 
-export async function createCase(data: any) {
-    // data matches the Case interface partially.
-    // We need to map it to the DB schema
+export async function createCase(data: any, ownerId?: string) {
     const newCase = {
         id: data.id || `case-${Math.random().toString(36).substr(2, 9)}`,
         debtorName: data.debtor?.name,
@@ -55,11 +60,12 @@ export async function createCase(data: any) {
         aging: data.aging,
         priorityScore: data.priorityScore,
         status: data.status || 'New',
-        assignedDcaId: data.assignedDCA, // Map known field
+        assignedDcaId: data.assignedDCA,
         slaStatus: data.slaStatus,
         paymentBehavior: data.paymentBehavior,
         caseHistory: typeof data.caseHistory === 'string' ? data.caseHistory : JSON.stringify(data.caseHistory),
         actionPlan: data.actionPlan,
+        ownerId: ownerId, // Save owner
         createdAt: new Date(),
         updatedAt: new Date(),
     };
@@ -68,10 +74,7 @@ export async function createCase(data: any) {
     return newCase;
 }
 
-export async function batchCreateCases(items: any[]) {
-    // Drizzle doesn't strictly have "batch" in one query for sqlite always, but we can loop (better-sqlite3 is synchronous/fast)
-    // or use .values([...array]) if supported.
-    // Mapping first
+export async function batchCreateCases(items: any[], ownerId?: string) {
     const values = items.map(data => ({
         id: data.id || `case-${Math.random().toString(36).substr(2, 9)}`,
         debtorName: data.debtor?.name,
@@ -86,12 +89,31 @@ export async function batchCreateCases(items: any[]) {
         paymentBehavior: data.paymentBehavior,
         caseHistory: typeof data.caseHistory === 'string' ? data.caseHistory : JSON.stringify(data.caseHistory),
         actionPlan: data.actionPlan,
+        ownerId: ownerId, // Save owner
         createdAt: new Date(),
         updatedAt: new Date(),
     }));
 
     if (values.length > 0) {
-        await db.insert(cases).values(values);
+        await db.insert(cases).values(values).onConflictDoUpdate({
+            target: cases.id,
+            set: {
+                debtorName: sql`excluded.debtor_name`,
+                debtorAccountId: sql`excluded.debtor_account_id`,
+                amount: sql`excluded.amount`,
+                currency: sql`excluded.currency`,
+                aging: sql`excluded.aging`,
+                priorityScore: sql`excluded.priority_score`,
+                status: sql`excluded.status`,
+                assignedDcaId: sql`excluded.assigned_dca_id`,
+                slaStatus: sql`excluded.sla_status`,
+                paymentBehavior: sql`excluded.payment_behavior`,
+                caseHistory: sql`excluded.case_history`,
+                actionPlan: sql`excluded.action_plan`,
+                ownerId: sql`excluded.owner_id`, // Update owner on re-import? Maybe yes.
+                updatedAt: new Date(),
+            }
+        });
     }
     return { count: values.length };
 }
