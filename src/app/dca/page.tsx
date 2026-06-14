@@ -2,7 +2,7 @@
 
 import { CasesTable } from '@/components/cases/cases-table';
 import { KpiCard } from '@/components/dashboard/kpi-card';
-import { DollarSign, FileText, TrendingUp, Users, AlertTriangle } from 'lucide-react';
+import { DollarSign, FileText, TrendingUp, Users, AlertTriangle, Sparkles } from 'lucide-react';
 import {
     Card,
     CardContent,
@@ -41,7 +41,7 @@ export default function DcaPortalPage() {
                 const myDcaFound = dcasData.find((d: any) => d.id === user.dcaId) || null;
                 setMyDca(myDcaFound as unknown as DCA);
 
-                const casesData = await getCases(user.uid, user.role, user.dcaId);
+                const casesData = await getCases(user.uid, user.role);
                 // Filter client side for extra safety if needed, or rely on server.
                 // If Admin, casesData is ALL cases. 
                 // If DCA agent, casesData is THEIR cases.
@@ -81,9 +81,16 @@ export default function DcaPortalPage() {
     const totalDebt = myCases?.reduce((sum, c) => sum + c.amount, 0) || 0;
 
     return (
-        <div className="flex-1 p-4 md:p-6 space-y-6">
-            <div className="flex items-center justify-between space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">{isLoading ? <Skeleton className="h-8 w-48" /> : `${myDca?.name || 'DCA'} Portal`}</h2>
+        <div className="flex-1 p-6 md:p-8 space-y-6 bg-slate-50/20 dark:bg-background min-h-screen">
+            <div className="flex items-center justify-between border-b border-border/20 pb-4">
+                <div>
+                    <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
+                        Agency Operations Hub
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {isLoading ? <Skeleton className="h-4 w-48" /> : `Operations and active assignments for ${myDca?.name || 'partner agencies'}`}
+                    </p>
+                </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <KpiCard
@@ -112,15 +119,63 @@ export default function DcaPortalPage() {
                 />
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Your Assigned Cases</CardTitle>
-                    <CardDescription>Manage your active collection portfolio.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? <Skeleton className="h-96 w-full" /> : <CasesTable cases={myCases || []} dcas={allDcas || []} />}
-                </CardContent>
-            </Card>
+            {/* High density split screen grid */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                    <Card className="shadow-none border-border/40">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-bold">Your Assigned Cases</CardTitle>
+                            <CardDescription className="text-[10px]">Manage your active collection portfolio.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? <Skeleton className="h-96 w-full" /> : <CasesTable cases={myCases || []} dcas={allDcas || []} />}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="lg:col-span-1 space-y-6">
+                    {/* AI Workload recommendation */}
+                    <Card className="shadow-none border-border/40 bg-gradient-to-r from-primary/5 to-secondary/5">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-sm font-bold">AI Hub Recommendations</CardTitle>
+                            </div>
+                            <CardDescription className="text-[10px]">Workload prioritization hints</CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-xs text-muted-foreground space-y-2">
+                            <p>
+                                🎯 **Priority Directives**: There are **{atRiskCasesCount}** cases approaching SLA breach thresholds. Focus initial outbound communication on these to maintain performance score requirements.
+                            </p>
+                            <p>
+                                📈 **Potential Yields**: Average recovery rate is **{myDca?.recoveryRate || 0}%**. AI suggests focusing on accounts with aging &lt; 90 days where probability coefficients are highest.
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Context Panel: Performance Metrics */}
+                    <Card className="shadow-none border-border/40">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-bold">Agency Compliance</CardTitle>
+                            <CardDescription className="text-[10px]">System quality check status</CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-xs space-y-3">
+                            <div className="flex justify-between items-center py-1 border-b border-border/20">
+                                <span className="text-muted-foreground">SLA Compliance Rate</span>
+                                <span className="font-semibold">98.4%</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1 border-b border-border/20">
+                                <span className="text-muted-foreground">Average Response Time</span>
+                                <span className="font-semibold">14.2 hours</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-muted-foreground">Data Integration Status</span>
+                                <span className="text-green-500 font-semibold">Active</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 }

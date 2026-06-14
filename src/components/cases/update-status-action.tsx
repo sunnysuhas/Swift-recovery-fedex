@@ -31,11 +31,13 @@ type UpdateStatusActionProps = {
 const availableStatuses: CaseStatus[] = [
   'New',
   'Assigned',
+  'In Progress',
   'Contact Made',
   'Payment Negotiated',
   'In Dispute',
   'Resolved',
   'Closed - Unresolved',
+  'Paid',
 ];
 
 export function UpdateStatusAction({ caseId, currentStatus }: UpdateStatusActionProps) {

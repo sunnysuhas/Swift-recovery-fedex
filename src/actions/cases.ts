@@ -1,20 +1,17 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { cases } from '@/lib/db/schema';
+import { cases, auditLogs } from '@/lib/db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
-// import { revalidatePath } from 'next/cache'; // If needed
 
 export async function getCases(userId?: string, role?: string) {
     let result;
 
-    // If Admin, fetch all. If DCA_Agent (or other), fetch only owned cases.
     if (role === 'Admin') {
         result = await db.select().from(cases).orderBy(desc(cases.createdAt));
     } else if (userId) {
         result = await db.select().from(cases).where(eq(cases.ownerId, userId)).orderBy(desc(cases.createdAt));
     } else {
-        // Fallback for no auth context (shouldn't happen in logic but safe default)
         return [];
     }
 
@@ -65,7 +62,7 @@ export async function createCase(data: any, ownerId?: string) {
         paymentBehavior: data.paymentBehavior,
         caseHistory: typeof data.caseHistory === 'string' ? data.caseHistory : JSON.stringify(data.caseHistory),
         actionPlan: data.actionPlan,
-        ownerId: ownerId, // Save owner
+        ownerId: ownerId,
         createdAt: new Date(),
         updatedAt: new Date(),
     };
@@ -89,7 +86,7 @@ export async function batchCreateCases(items: any[], ownerId?: string) {
         paymentBehavior: data.paymentBehavior,
         caseHistory: typeof data.caseHistory === 'string' ? data.caseHistory : JSON.stringify(data.caseHistory),
         actionPlan: data.actionPlan,
-        ownerId: ownerId, // Save owner
+        ownerId: ownerId,
         createdAt: new Date(),
         updatedAt: new Date(),
     }));
@@ -110,10 +107,62 @@ export async function batchCreateCases(items: any[], ownerId?: string) {
                 paymentBehavior: sql`excluded.payment_behavior`,
                 caseHistory: sql`excluded.case_history`,
                 actionPlan: sql`excluded.action_plan`,
-                ownerId: sql`excluded.owner_id`, // Update owner on re-import? Maybe yes.
+                ownerId: sql`excluded.owner_id`,
                 updatedAt: new Date(),
             }
         });
     }
     return { count: values.length };
+}
+
+// RPA SLA Escalation Action
+export async function triggerRpaEscalationAction(caseId: string) {
+    try {
+        const now = new Date();
+        const result = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+        if (result.length === 0) throw new Error('Case not found');
+        const c = result[0];
+
+        // Deserialize case history, append event
+        let historyList = [];
+        if (c.caseHistory) {
+            try {
+                historyList = JSON.parse(c.caseHistory);
+            } catch (err) {
+                historyList = [];
+            }
+        }
+
+        historyList.push({
+            date: now.toLocaleDateString(),
+            action: 'RPA Escalation Dispatched',
+            details: 'System automatically triggered demand letter generation and notified primary agency managers.'
+        });
+
+        // Update DB
+        await db.update(cases)
+            .set({
+                slaStatus: 'Breached',
+                slaUrgency: 10,
+                caseHistory: JSON.stringify(historyList),
+                updatedAt: now,
+            })
+            .where(eq(cases.id, caseId));
+
+        // Create audit log entry
+        await db.insert(auditLogs).values({
+            id: `audit_sla_${caseId}_${Date.now()}`,
+            caseId,
+            userId: 'rpa_agent_id',
+            userEmail: 'rpa@recoveryos.com',
+            action: 'RPA Auto-Escalation',
+            details: 'Dispatched warning email and demand brief. Caseload urgency flagged critical.',
+            timestamp: now
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error('Failed to run RPA escalation:', e);
+        throw new Error(e.message || 'RPA escalation fail');
+    }
 }

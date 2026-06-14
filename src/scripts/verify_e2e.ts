@@ -19,8 +19,11 @@ async function runE2ETest() {
             performanceScore: 85,
             activeCases: 0,
             recoveredAmount: 0,
-            totalCases: 0
-        };
+            totalCases: 0,
+            manager: 'Test Manager',
+            logoUrl: null,
+            createdAt: new Date()
+        } as any;
         await db.insert(dcas).values(dca).onConflictDoNothing();
     }
     console.log(`[CHECK] DCA Available: ${dca.name}`);

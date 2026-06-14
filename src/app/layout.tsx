@@ -10,8 +10,8 @@ import { Outfit } from 'next/font/google';
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-body' });
 
 export const metadata: Metadata = {
-  title: 'RecoveryAI',
-  description: 'FedEx DCA Intelligence Platform',
+  title: 'RecoveryOS - Enterprise Recovery Intelligence Platform',
+  description: 'RecoveryOS — Enterprise Recovery Intelligence Platform',
 };
 
 export default function RootLayout({

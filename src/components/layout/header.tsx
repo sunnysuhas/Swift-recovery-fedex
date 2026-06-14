@@ -24,11 +24,11 @@ import React from 'react';
 
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: Home },
-  { href: '/cases', label: 'All Cases', icon: FileText },
-  { href: '/dca', label: 'DCA Portal', icon: ShieldCheck },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/import', label: 'Import Data', icon: Upload },
+  { href: '/', label: 'Recovery Command Center', icon: Home },
+  { href: '/cases', label: 'Recovery Portfolio', icon: FileText },
+  { href: '/dca', label: 'Agency Operations Hub', icon: ShieldCheck },
+  { href: '/reports', label: 'Executive Intelligence', icon: BarChart3 },
+  { href: '/import', label: 'Portfolio Ingestion Center', icon: Upload },
 ];
 
 const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-1');
@@ -62,24 +62,30 @@ export default function AppHeader() {
   }, [searchParams]);
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-      <Link href="/" className="flex items-center gap-2 font-semibold">
-        <Logo className="h-6 w-6" />
-        <span className="">RecoveryAI</span>
+    <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background/85 backdrop-blur-md px-4 md:px-6 shadow-sm">
+      <Link href="/" className="flex items-center gap-2 font-semibold group shrink-0 whitespace-nowrap mr-4">
+        <Logo className="h-6 w-6 text-primary group-hover:rotate-12 transition-transform duration-200" />
+        <span className="text-lg tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-bold">RecoveryOS</span>
+        <span className="hidden lg:inline text-[10px] font-medium tracking-wider uppercase text-muted-foreground border-l pl-2.5 ml-0.5 border-border/60">Enterprise Recovery Intelligence Platform</span>
       </Link>
-      <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
-        {menuItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'transition-colors hover:text-foreground',
-              pathname === item.href ? 'text-foreground' : 'text-muted-foreground'
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
+      <nav className="hidden md:flex items-center gap-1 text-[13px] font-medium ml-4">
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'px-2.5 py-1.5 rounded-md transition-all duration-150 font-medium whitespace-nowrap',
+                isActive
+                  ? 'bg-accent/60 text-foreground'
+                  : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'
+              )}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <form onSubmit={handleSearch} className="ml-auto flex-1 sm:flex-initial">

@@ -7,7 +7,9 @@ export type CaseStatus =
   | 'Payment Negotiated'
   | 'In Dispute'
   | 'Resolved'
-  | 'Closed - Unresolved';
+  | 'Closed - Unresolved'
+  | 'In Progress'
+  | 'Paid';
 
 export type SlaStatus = 'On Track' | 'At Risk' | 'Breached';
 
@@ -23,6 +25,7 @@ export interface Case {
   currency: string;
   aging: number; // days
   priorityScore: number;
+  recoveryProbability?: number;
   status: CaseStatus;
   assignedDCA: string; // DCA ID
   slaStatus: SlaStatus;

@@ -62,7 +62,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-4">
             <Logo className="h-8 w-8" />
-            <CardTitle className="text-2xl">RecoveryAI</CardTitle>
+            <CardTitle className="text-2xl">RecoveryOS</CardTitle>
           </div>
           <CardDescription>
             Enter your email below to login to your account

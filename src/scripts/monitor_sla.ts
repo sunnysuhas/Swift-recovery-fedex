@@ -27,7 +27,7 @@ async function monitorSla() {
         // Check if deadline exists in sla_tracking, if not create
         const slaRecord = await db.select().from(slaTracking).where(eq(slaTracking.caseId, c.id));
 
-        if (c.priorityScore > 80 && c.aging > 60) {
+        if ((c.priorityScore || 0) > 80 && c.aging > 60) {
             urgency = 10; // Critical
             // If no update in last 7 days (mock logic for update check)
             // In real app we check c.updatedAt

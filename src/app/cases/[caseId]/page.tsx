@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { notFound, useParams } from 'next/navigation';
 import {
   Card,
@@ -18,10 +19,10 @@ import {
   Clock,
   AlertTriangle,
   BarChart,
+  TrendingUp,
 } from 'lucide-react';
 import { CaseTimeline } from '@/components/cases/case-timeline';
-import { ExplainPriorityAction } from '@/components/cases/explain-priority-action';
-import { GeneratePlanAction } from '@/components/cases/generate-plan-action';
+import { AICaseAnalysisDashboard } from '@/components/cases/ai-case-analysis-dashboard';
 import { Case, DCA, AuditLog } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UpdateStatusAction } from '@/components/cases/update-status-action';
@@ -32,7 +33,65 @@ import { getAuditLogs } from '@/actions/audit-logs';
 import { useUser } from '@/components/providers/local-auth-provider';
 import { useEffect, useState } from 'react';
 
+// Client Error Boundary
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('Case Workspace Render Exception:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+function WorkspaceErrorFallback() {
+  return (
+    <div className="flex-1 p-6 md:p-8 space-y-6 flex items-center justify-center min-h-screen bg-slate-50/10 dark:bg-background">
+      <Card className="w-full max-w-md border-destructive/40 shadow-none">
+        <CardHeader className="text-center pb-2">
+          <AlertTriangle className="w-10 h-10 text-destructive mx-auto mb-2" />
+          <CardTitle className="text-lg font-bold">Workspace Crash Intercepted</CardTitle>
+          <CardDescription className="text-xs">
+            A rendering error occurred in the Recovery Workspace view.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-xs text-muted-foreground text-center space-y-3 pt-2">
+          <p>
+            The system successfully intercepted a rendering collision (such as invalid state types, JSON timeline anomalies, or currency mismatch).
+          </p>
+          <Button onClick={() => window.location.reload()} size="sm" className="w-full">
+            Reload Workspace
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function CaseDetailPage() {
+  return (
+    <ErrorBoundary fallback={<WorkspaceErrorFallback />}>
+      <CaseDetailContent />
+    </ErrorBoundary>
+  );
+}
+
+function CaseDetailContent() {
   const params = useParams();
   const caseId = params.caseId as string;
   const { user } = useUser();
@@ -98,13 +157,20 @@ export default function CaseDetailPage() {
   };
 
   return (
-    <div className="flex-1 p-4 md:p-6">
-      <div className="flex items-center justify-between space-y-2 mb-4">
-        <h2 className="text-3xl font-bold tracking-tight">Case Details: {caseItem.id}</h2>
+    <div className="flex-1 p-4 md:p-6 bg-slate-50/30 dark:bg-background min-h-screen">
+      <div className="flex items-center justify-between border-b border-border/20 pb-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
+            Recovery Intelligence Workspace
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Case Identifier: {caseItem.id}
+          </p>
+        </div>
       </div>
       <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
         <div className="md:col-span-2 lg:col-span-3 space-y-6">
-          <Card>
+          <Card className="shadow-sm border-border/80">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Case Summary</CardTitle>
@@ -123,39 +189,39 @@ export default function CaseDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 text-sm">
                 <InfoItem
-                  icon={<DollarSign />}
+                  icon={<DollarSign className="text-primary h-4 w-4" />}
                   label="Amount"
                   value={new Intl.NumberFormat('en-US', {
                     style: 'currency',
-                    currency: caseItem.currency,
-                  }).format(caseItem.amount)}
+                    currency: caseItem.currency || 'USD',
+                  }).format(caseItem.amount || 0)}
                 />
                 <InfoItem
-                  icon={<Clock />}
+                  icon={<Clock className="text-primary h-4 w-4" />}
                   label="Aging"
                   value={`${caseItem.aging} days`}
                 />
                 <InfoItem
-                  icon={<BarChart />}
+                  icon={<BarChart className="text-primary h-4 w-4" />}
                   label="Priority Score"
                   value={caseItem.priorityScore}
                 />
                 <InfoItem
-                  icon={<User />}
+                  icon={<TrendingUp className="text-secondary h-4 w-4" />}
+                  label="AI Recovery"
+                  value={caseItem.recoveryProbability ? `${caseItem.recoveryProbability}%` : 'Not Rated'}
+                />
+                <InfoItem
+                  icon={<User className="text-primary h-4 w-4" />}
                   label="Debtor Account"
                   value={caseItem.debtor.accountId}
                 />
                 <InfoItem
-                  icon={<Shield />}
+                  icon={<Shield className="text-primary h-4 w-4" />}
                   label="Assigned DCA"
                   value={dca?.name || 'Unassigned'}
-                />
-                <InfoItem
-                  icon={<Calendar />}
-                  label="Last Communication"
-                  value={caseItem.lastCommunication}
                 />
               </div>
               <Separator className="my-4" />
@@ -166,7 +232,7 @@ export default function CaseDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm border-border/80">
             <CardHeader>
               <CardTitle>Case History & Audit Trail</CardTitle>
               <CardDescription>
@@ -180,17 +246,9 @@ export default function CaseDetailPage() {
         </div>
 
         <div className="md:col-span-1 lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI Copilot</CardTitle>
-              <CardDescription>Intelligent actions and insights</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ExplainPriorityAction caseItem={caseItem} dca={dca || undefined} />
-              <GeneratePlanAction caseItem={caseItem} dca={dca || undefined} />
-            </CardContent>
-          </Card>
-          <Card>
+          <AICaseAnalysisDashboard caseItem={caseItem} dca={dca || undefined} />
+          
+          <Card className="shadow-sm border-border/80">
             <CardHeader>
               <CardTitle>Manual Actions</CardTitle>
             </CardHeader>
